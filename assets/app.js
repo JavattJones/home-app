@@ -226,7 +226,7 @@ async function pushRemote() {
   if (remoteSha) body.sha = remoteSha;
   const res = await fetch(ghUrl(), { method: "PUT", headers: ghHeaders(), body: JSON.stringify(body) });
   if (res.status === 409 || res.status === 422) {
-    // sha desactualizado (p. ej. la pareja guardó antes): re-lee y reintenta una vez
+    // sha desactualizado (p. ej. otro colaborador guardó antes): re-lee y reintenta una vez
     const cur = await fetch(ghUrl(), { headers: ghHeaders() });
     if (cur.ok) {
       remoteSha = (await cur.json()).sha;
