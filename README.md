@@ -4,7 +4,7 @@ PWA para llevar la cuenta del dinero que cada uno aporta a **la casa** (cooperat
 
 - El código de este repo es público pero **no contiene ningún dato**.
 - Los datos viven en un **repo privado** (`home-data`) y viajan directamente entre cada dispositivo y GitHub por HTTPS.
-- Funciona sin servidor propio. La pareja comparte el mismo repo de datos: cada uno conecta su propio token.
+- Funciona sin servidor propio. Los colaboradores comparten el mismo repo de datos: cada uno conecta su propio token.
 
 ---
 
@@ -18,7 +18,7 @@ PWA para llevar la cuenta del dinero que cada uno aporta a **la casa** (cooperat
 4. **Permissions → Repository permissions → Contents: Read and write**
 5. Generate token → copia el `github_pat_…`
 
-> La pareja necesita ser **colaboradora** del repo `home-data` (Settings → Collaborators) y generar **su propio** token con sus permisos.
+> Cada colaborador/a necesita ser **colaborador/a** del repo `home-data` (Settings → Collaborators) y generar **su propio** token con sus permisos.
 
 ### 2. Conectar la app
 
@@ -26,7 +26,7 @@ En la app → **Ajustes → Sincronización (GitHub)**:
 
 | Campo | Valor |
 |---|---|
-| Usuario | el dueño del repo de datos (p. ej. `JavattJones`) |
+| Usuario | el dueño del repo de datos (tu usuario de GitHub) |
 | Repositorio | `home-data` |
 | Token | el `github_pat_…` copiado |
 
@@ -37,11 +37,11 @@ Pulsa **Guardar y probar**. El token se cifra con una contraseña y se guarda so
 ## Uso
 
 - **Añadir** → registra cada movimiento:
-  - **Aportación a la casa**: dinero que uno de los dos pone (entrada, cuota de la cooperativa, derrama, notaría…).
-  - **Liquidación**: cuando uno os paga al otro para cuadrar el balance.
+  - **Aportación a la casa**: dinero que pone un colaborador (entrada, cuota de la cooperativa, derrama, notaría…).
+  - **Liquidación**: cuando un colaborador paga a otro para cuadrar el balance.
 - **Resumen** → total aportado, **quién debe a quién**, reparto real vs. objetivo, gráficas por mes y por categoría.
 - **Movim.** → todos los movimientos, con filtros por persona y categoría; editar o eliminar.
-- **Ajustes** → vuestros nombres, reparto objetivo (50/50 por defecto), categorías, sincronización y copia de seguridad.
+- **Ajustes** → los nombres de los colaboradores, reparto objetivo (50/50 por defecto), categorías, sincronización y copia de seguridad.
 
 ## Cómo se calcula el balance
 
