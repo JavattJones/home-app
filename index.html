@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Home</title>
+  <meta name="description" content="Gestión de pagos y aportaciones a la casa">
+  <meta name="theme-color" content="#04100a">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Home">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/secure-token.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Home_OS<span class="cursor">▌</span></div>
+    <div id="sync-status" class="sync-status" title="Estado de sincronización">·</div>
+  </header>
+
+  <main id="main">
+
+    <!-- ====== VISTA: RESUMEN ====== -->
+    <section id="view-resumen" class="view">
+      <div id="empty-state" class="card hidden">
+        <h2>🏠 Bienvenidos</h2>
+        <p>Esta app lleva la cuenta del dinero que aportáis cada uno a la casa y os dice <b>quién debe a quién</b> para cuadrar.</p>
+        <p style="margin-top:10px">Para empezar: id a <b>Ajustes</b>, conectad el repositorio de datos de GitHub, y registrad el primer pago en <b>Añadir</b>.</p>
+      </div>
+
+      <div id="dash" class="hidden">
+        <div class="hero card">
+          <div class="hero-label">Aportado a la casa</div>
+          <div id="hero-total" class="hero-total">—</div>
+          <div id="hero-sub" class="hero-delta"></div>
+        </div>
+
+        <!-- número estrella: quién debe a quién -->
+        <div id="card-balance" class="card balance">
+          <div class="hero-label">Balance entre vosotros</div>
+          <div id="balance-txt" class="balance-txt">—</div>
+          <div class="reparto">
+            <div class="reparto-bar"><i id="reparto-a"></i><i id="reparto-b"></i></div>
+            <div id="reparto-legend" class="reparto-legend"></div>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi card">
+            <div class="kpi-label" id="kpi-a-label">Aportado A</div>
+            <div id="kpi-a" class="kpi-value">—</div>
+            <div class="kpi-sub" id="kpi-a-sub"></div>
+          </div>
+          <div class="kpi card">
+            <div class="kpi-label" id="kpi-b-label">Aportado B</div>
+            <div id="kpi-b" class="kpi-value">—</div>
+            <div class="kpi-sub" id="kpi-b-sub"></div>
+          </div>
+          <div class="kpi card">
+            <div class="kpi-label">Movimientos</div>
+            <div id="kpi-movs" class="kpi-value">—</div>
+            <div class="kpi-sub" id="kpi-movs-sub"></div>
+          </div>
+          <div class="kpi card">
+            <div class="kpi-label">Media / mes</div>
+            <div id="kpi-media" class="kpi-value">—</div>
+            <div class="kpi-sub">aportado al mes</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chart-head">
+            <h3>Aportaciones por mes</h3>
+            <div class="seg">
+              <button id="seg-mensual" class="seg-btn active">Mensual</button>
+              <button id="seg-acum" class="seg-btn">Acumulado</button>
+            </div>
+          </div>
+          <canvas id="chart-evolucion" height="240"></canvas>
+        </div>
+
+        <div class="card" id="card-categorias">
+          <h3>Por categoría</h3>
+          <canvas id="chart-categorias" height="220"></canvas>
+        </div>
+
+        <div class="card">
+          <div class="chart-head">
+            <h3>Últimos movimientos</h3>
+            <button id="ver-todos" class="seg-btn">Ver todos →</button>
+          </div>
+          <div id="lista-ultimos" class="lista-movs"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== VISTA: AÑADIR ====== -->
+    <section id="view-add" class="view hidden">
+      <div class="card">
+        <h2 id="add-titulo">Registrar movimiento</h2>
+        <input type="hidden" id="add-id">
+        <label class="field">
+          <span>Tipo</span>
+          <select id="add-tipo">
+            <option value="aportacion">Aportación a la casa</option>
+            <option value="liquidacion">Liquidación (pago entre vosotros)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Fecha</span>
+          <input type="date" id="add-fecha">
+        </label>
+        <label class="field" id="field-pagador">
+          <span id="add-pagador-lbl">Quién lo paga</span>
+          <select id="add-pagador"></select>
+        </label>
+        <label class="field hidden" id="field-receptor">
+          <span>Se lo paga a</span>
+          <select id="add-receptor"></select>
+        </label>
+        <label class="field" id="field-categoria">
+          <span>Categoría</span>
+          <select id="add-categoria"></select>
+        </label>
+        <label class="field">
+          <span>Concepto</span>
+          <input type="text" id="add-concepto" placeholder="p. ej. Señal de reserva, cuota junio…">
+        </label>
+        <label class="field">
+          <span>Importe (€)</span>
+          <input type="number" id="add-importe" inputmode="decimal" step="0.01" placeholder="0,00">
+        </label>
+        <div class="btn-row">
+          <button id="btn-add-guardar" class="btn primary">💾 Guardar</button>
+          <button id="btn-add-cancelar" class="btn hidden">Cancelar</button>
+        </div>
+        <p id="add-msg" class="msg"></p>
+        <p class="hint" id="add-hint">· <b>Aportación</b>: dinero que uno de los dos pone para la casa (entrada, cuotas, gastos…).<br>
+          · <b>Liquidación</b>: cuando uno os paga al otro para cuadrar el balance.</p>
+      </div>
+    </section>
+
+    <!-- ====== VISTA: MOVIMIENTOS ====== -->
+    <section id="view-movs" class="view hidden">
+      <div class="card">
+        <div class="chart-head">
+          <h2>Movimientos</h2>
+          <span id="movs-total" class="muted"></span>
+        </div>
+        <div class="filtros">
+          <select id="filtro-persona"><option value="">Todos</option></select>
+          <select id="filtro-categoria"><option value="">Todas las categorías</option></select>
+        </div>
+        <div id="lista-movs" class="lista-movs"></div>
+      </div>
+    </section>
+
+    <!-- ====== VISTA: AJUSTES ====== -->
+    <section id="view-ajustes" class="view hidden">
+      <div class="card">
+        <h2>Vosotros</h2>
+        <label class="field"><span>Persona A</span><input type="text" id="cfg-nombre-a" placeholder="Nombre"></label>
+        <label class="field"><span>Persona B</span><input type="text" id="cfg-nombre-b" placeholder="Nombre"></label>
+      </div>
+
+      <div class="card">
+        <h2>Reparto objetivo</h2>
+        <label class="field">
+          <span id="cfg-reparto-lbl">Parte de A (%)</span>
+          <input type="number" id="cfg-reparto-a" inputmode="numeric" min="0" max="100" step="1" placeholder="50">
+        </label>
+        <div class="reparto" style="margin-top:4px">
+          <div class="reparto-bar"><i id="cfg-reparto-bar-a"></i><i id="cfg-reparto-bar-b"></i></div>
+          <div id="cfg-reparto-legend" class="reparto-legend"></div>
+        </div>
+        <p class="hint">Lo que le toca aportar a cada uno. 50/50 = a partes iguales. La parte de B se calcula sola.</p>
+      </div>
+
+      <div class="card">
+        <h2>Categorías</h2>
+        <div id="lista-categorias"></div>
+        <div class="add-row">
+          <input type="text" id="nueva-categoria" placeholder="Nueva categoría (p. ej. Derrama)">
+          <button id="btn-add-categoria" class="btn">＋ Añadir</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Sincronización (GitHub)</h2>
+        <label class="field"><span>Usuario / organización</span><input type="text" id="gh-owner" placeholder="tu-usuario"></label>
+        <label class="field"><span>Repositorio privado de datos</span><input type="text" id="gh-repo" placeholder="home-data"></label>
+        <label class="field"><span>Token (fine-grained, solo ese repo)</span><input type="password" id="gh-token" placeholder="github_pat_…"></label>
+        <div class="btn-row">
+          <button id="btn-gh-guardar" class="btn primary">Guardar y probar</button>
+          <button id="btn-gh-sync" class="btn">⟳ Sincronizar ahora</button>
+        </div>
+        <p id="gh-msg" class="msg"></p>
+        <div id="gh-seguridad" class="gh-seg hidden"></div>
+        <p class="hint">El token se guarda solo en este dispositivo. Los datos viajan cifrados (HTTPS) directamente entre tu dispositivo y GitHub. Cada uno conecta su propio token.</p>
+      </div>
+
+      <div class="card">
+        <h2>Copia de seguridad</h2>
+        <div class="btn-row">
+          <button id="btn-export" class="btn">⬇ Exportar JSON</button>
+          <button id="btn-import" class="btn">⬆ Importar JSON</button>
+          <input type="file" id="import-file" accept="application/json" class="hidden">
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button data-view="resumen" class="tab active">[F1]<span>Resumen</span></button>
+    <button data-view="add" class="tab">[F2]<span>Añadir</span></button>
+    <button data-view="movs" class="tab">[F3]<span>Movim.</span></button>
+    <button data-view="ajustes" class="tab">[F4]<span>Ajustes</span></button>
+  </nav>
+
+  <script src="assets/chart.umd.min.js"></script>
+  <script src="assets/secure-token.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

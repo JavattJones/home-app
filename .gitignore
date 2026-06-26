@@ -1,0 +1,22 @@
+# ─── Datos sensibles · NUNCA subir al repo público ───
+.env
+.env.*
+*.env
+home*.json
+*-data.json
+backup*.json
+export*.json
+
+# ─── Sistema operativo / editores ───
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# ─── Dependencias / temporales ───
+node_modules/
+*.log
+.cache/
+tmp/

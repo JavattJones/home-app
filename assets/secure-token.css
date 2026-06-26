@@ -1,0 +1,53 @@
+/* secure-token.css — modal de contraseña (estética terminal CRT) */
+
+.st-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(2px);
+}
+.st-modal {
+  width: 100%; max-width: 380px;
+  background: #0b0a04;
+  border: 1px solid var(--amber, #ffb000);
+  border-radius: var(--radius, 6px);
+  padding: 20px 18px;
+  box-shadow: 0 0 32px rgba(255, 176, 0, 0.25);
+}
+.st-title {
+  font-family: var(--mono); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--amber, #ffb000);
+  text-shadow: 0 0 12px rgba(255, 176, 0, 0.45);
+  margin-bottom: 10px;
+}
+.st-hint {
+  font-family: var(--mono); font-size: 11px; line-height: 1.7;
+  color: var(--muted, #9a8d5e); margin-bottom: 14px;
+}
+.st-input { margin-bottom: 10px; }
+.st-msg {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: var(--red, #ff5f5f); min-height: 16px; margin: 2px 0 10px;
+  letter-spacing: 0.03em;
+}
+.st-row { display: flex; gap: 10px; }
+.st-row .btn { flex: 1; }
+
+/* ─── indicador de estado del token en Ajustes ─── */
+.gh-seg {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 4px 0 10px; padding: 9px 11px;
+  border: 1px solid var(--card-border); border-radius: 4px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.03em;
+}
+.gh-seg.cifrado { border-color: rgba(61, 249, 139, 0.4); color: var(--green); }
+.gh-seg.claro { border-color: rgba(255, 95, 95, 0.45); color: var(--red); }
+.gh-seg .gh-seg-txt { flex: 1; min-width: 0; line-height: 1.5; }
+.gh-seg .btn-mini {
+  background: none; border: 1px solid currentColor; border-radius: 4px;
+  color: inherit; font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 10px;
+  cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent;
+}
