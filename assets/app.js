@@ -581,8 +581,10 @@ function renderMovimientos(){
 /* ============================================================
    AJUSTES
    ============================================================ */
+let priceEditIdx = null;   // índice de la revisión del precio en edición (o null)
 function renderAjustes(){
   const s = stats();
+  const pe = (priceEditIdx!=null && priceHistory[priceEditIdx]) ? priceHistory[priceEditIdx] : null;
   const aV = s.variance, aCls = aV>0?'up':aV<0?'down':'flat', aIc = aV>0?'ph-trend-up':aV<0?'ph-trend-down':'ph-minus';
   $('#s-ajustes').innerHTML = `
     <div class="sec-title serif" style="margin-top:10px">Personas</div>
@@ -608,16 +610,20 @@ function renderAjustes(){
         <div class="var-chip ${aCls}" style="margin-top:4px"><i class="ph ${aIc}"></i> ${aV>=0?'+':'−'}${eur(Math.abs(aV))}</div>
       </div>
       <div class="price-rows" id="price-rows">${priceHistory.map((p,i)=>{ const delta=i>0?p.price-priceHistory[i-1].price:0;
-        return `<div class="price-row">
+        return `<div class="price-row"${priceEditIdx===i?' style="background:var(--javi-soft);border-radius:12px;padding-left:10px;padding-right:10px"':''}>
           <div class="pr-l"><div class="pr-note">${i===0?'Inicial pactado':p.note}</div><div class="pr-date">${fechaLarga(p.date)}</div></div>
           <div class="pr-r"><div class="pr-price tnum">${eur(p.price)}</div>${i>0?`<div class="pr-delta ${delta>=0?'up':'down'}">${delta>=0?'+':'−'}${eur(Math.abs(delta))}</div>`:''}</div>
-          ${i>0?`<button class="pr-del" data-pdel="${i}"><i class="ph ph-x"></i></button>`:'<span class="pr-del-spacer"></span>'}
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="pr-del" data-pedit="${i}" title="Editar"><i class="ph ph-pencil-simple"></i></button>
+            ${i>0?`<button class="pr-del" data-pdel="${i}" title="Eliminar"><i class="ph ph-x"></i></button>`:''}
+          </div>
         </div>`; }).join('')}</div>
       <div class="price-add">
-        <input type="date" id="pr-date" class="pr-date-i" value="${todayISO()}">
-        <input type="number" id="pr-amount" class="pr-amount-i" placeholder="Nuevo precio €" inputmode="numeric">
-        <input type="text" id="pr-note" class="pr-note-i" placeholder="Motivo (p. ej. derrama placas)" maxlength="30">
-        <button id="pr-add-btn" class="pr-add-btn"><i class="ph ph-plus"></i> Añadir revisión del precio</button>
+        <input type="date" id="pr-date" class="pr-date-i" value="${pe?pe.date:todayISO()}">
+        <input type="number" id="pr-amount" class="pr-amount-i" placeholder="Precio €" inputmode="numeric" value="${pe?pe.price:''}">
+        <input type="text" id="pr-note" class="pr-note-i" placeholder="Motivo (p. ej. derrama placas)" maxlength="30" value="${pe?(pe.note||'').replace(/"/g,'&quot;'):''}">
+        <button id="pr-add-btn" class="pr-add-btn"><i class="ph ${pe?'ph-check':'ph-plus'}"></i> ${pe?'Guardar cambios':'Añadir revisión del precio'}</button>
+        ${pe?'<button id="pr-cancel-btn" class="pr-add-btn" style="background:var(--bg);color:var(--ink2)"><i class="ph ph-x"></i> Cancelar</button>':''}
       </div>
       <p class="set-note">El precio puede cambiar (derramas, ajustes de la cooperativa…). Cada revisión actualiza la desviación y la hipoteca estimada en el Resumen.</p>
     </div>
@@ -665,18 +671,25 @@ function renderAjustes(){
     save(); renderAjustes(); renderAnadir(); renderResumen(); toast('Categoría eliminada'); });
   $('#add-cat-btn').onclick=()=>{ const v=$('#new-cat').value.trim();
     if(v && !categories.includes(v)){ categories.push(v); save(); renderAjustes(); renderAnadir(); toast('Categoría añadida'); } };
+  $('#price-rows').querySelectorAll('[data-pedit]').forEach(b=>b.onclick=()=>{
+    priceEditIdx=parseInt(b.dataset.pedit); renderAjustes();
+    const amt=$('#pr-amount'); if(amt&&amt.focus) amt.focus(); });
   $('#price-rows').querySelectorAll('[data-pdel]').forEach(b=>b.onclick=()=>{
     if(priceHistory.length<=1) return;
-    priceHistory.splice(parseInt(b.dataset.pdel),1);
+    const i=parseInt(b.dataset.pdel);
+    priceHistory.splice(i,1);
+    if(priceEditIdx===i) priceEditIdx=null; else if(priceEditIdx!=null && i<priceEditIdx) priceEditIdx--;
     save(); renderAjustes(); renderResumen(); toast('Revisión eliminada'); });
   $('#pr-add-btn').onclick=()=>{
     const d=$('#pr-date').value||todayISO();
     const a=parseFloat($('#pr-amount').value);
     const n=$('#pr-note').value.trim()||'Ajuste de precio';
     if(!a||a<=0){ shake('#pr-amount'); return; }
-    priceHistory.push({date:d,price:a,note:n});
+    if(priceEditIdx!=null && priceHistory[priceEditIdx]){ priceHistory[priceEditIdx]={date:d,price:a,note:n}; priceEditIdx=null; }
+    else { priceHistory.push({date:d,price:a,note:n}); }
     priceHistory.sort((x,y)=> x.date<y.date?-1:x.date>y.date?1:0);
-    save(); renderAjustes(); renderResumen(); toast('Precio actualizado'); };
+    save(); renderAjustes(); renderResumen(); toast(d?'Revisión guardada':'Precio actualizado'); };
+  { const cb=$('#pr-cancel-btn'); if(cb) cb.onclick=()=>{ priceEditIdx=null; renderAjustes(); }; }
   $('#gh-save').onclick=guardarGitHub;
   $('#gh-sync').onclick=()=>syncFull(true);
   $('#exp-btn').onclick=exportBackup;
