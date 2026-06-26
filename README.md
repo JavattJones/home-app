@@ -1,6 +1,6 @@
 # 🏠 Home
 
-PWA para llevar la cuenta del dinero que cada uno aporta a **la casa** (cooperativa) y saber, en todo momento, **quién debe a quién** para cuadrar el reparto pactado.
+PWA para llevar el seguimiento de la compra de **vuestra casa** (una vivienda cooperativa): el **precio actual** y sus revisiones, cuánto habéis **aportado** entre los dos, cuánto **queda por aportar** (≈ hipoteca estimada) y **quién debe a quién** para cuadrar el reparto pactado.
 
 - El código de este repo es público pero **no contiene ningún dato**.
 - Los datos viven en un **repo privado** (`home-data`) y viajan directamente entre cada dispositivo y GitHub por HTTPS.
@@ -36,12 +36,12 @@ Pulsa **Guardar y probar**. El token se cifra con una contraseña y se guarda so
 
 ## Uso
 
+- **Resumen** → el **precio de la casa** y su desviación, % financiado e **hipoteca estimada**; debajo, en secundario, **quién debe a quién** y el reparto real vs. objetivo; KPIs y gráficas (evolución del precio, aportaciones mes a mes, por categoría).
 - **Añadir** → registra cada movimiento:
-  - **Aportación a la casa**: dinero que pone un colaborador (entrada, cuota de la cooperativa, derrama, notaría…).
-  - **Liquidación**: cuando un colaborador paga a otro para cuadrar el balance.
-- **Resumen** → total aportado, **quién debe a quién**, reparto real vs. objetivo, gráficas por mes y por categoría.
-- **Movim.** → todos los movimientos, con filtros por persona y categoría; editar o eliminar.
-- **Ajustes** → los nombres de los colaboradores, reparto objetivo (50/50 por defecto), categorías, sincronización y copia de seguridad.
+  - **Aportación a la casa**: dinero que pone uno (entrada, cuota de la cooperativa, derrama, notaría…).
+  - **Liquidación**: cuando uno paga al otro para cuadrar el balance.
+- **Movimientos** → todos, con filtros por persona y categoría; editar o eliminar.
+- **Ajustes** → los nombres, reparto objetivo (50/50 por defecto), el **precio de la casa** (con su historial de revisiones), categorías, sincronización y copia de seguridad.
 
 ## Cómo se calcula el balance
 
@@ -55,7 +55,7 @@ Si sale **positivo**, ha puesto de más y el otro le debe esa cantidad. Cuando u
 
 ## Diseño
 
-Interfaz retro estilo terminal CRT: tipografía monoespaciada, ámbar/cian sobre negro, scanlines y pestañas [F1]–[F4]. Cada persona tiene su color (ámbar / cian).
+Interfaz cálida y editorial, pensada para móvil: fondo crema, tipografías Instrument Serif (números y títulos) y Hanken Grotesk (UI), tarjetas redondeadas y microinteracciones suaves (bottom-sheet, toasts). Cada persona tiene su color: **Javi** verde pino, **Andrea** terracota. Gráficas con Chart.js; iconografía Phosphor.
 
 ## Copia de seguridad
 
