@@ -604,6 +604,7 @@ function renderHipoteca(){
     return;
   }
   const gastoRow = (ic,label,val)=>`<div class="row-between" style="padding:8px 0"><span style="display:flex;align-items:center;gap:9px;font-weight:600"><i class="ph ${ic}" style="color:var(--ink2)"></i>${label}</span><span class="tnum" style="font-weight:800">${eur(val)}</span></div>`;
+  const detRow = (label,val)=>`<div class="row-between" style="padding:6px 0"><span class="muted" style="font-size:13px">${label}</span><span class="tnum" style="font-weight:700;font-size:13.5px;color:var(--ink)">${val}</span></div>`;
   const result = s.hasMortgage ? `
     <div class="card">
       <div class="row-between" style="align-items:flex-start">
@@ -624,7 +625,14 @@ function renderHipoteca(){
         <span><span class="dot" style="background:var(--javi)"></span>${PEOPLE.javi.name} <b>${eur(s.monthlyByPerson.javi)}</b>/mes</span>
         <span><b>${eur(s.monthlyByPerson.andrea)}</b>/mes ${PEOPLE.andrea.name} <span class="dot" style="background:var(--andrea)"></span></span>
       </div>
-      <div class="chart-cap"><i class="ph ph-info"></i> Financiáis <b>${eur(s.financed)}</b> (precio − entrada de ${eur(s.down)}) a <b>${String(s.interest).replace('.',',')} %</b> en <b>${s.years} años</b> · intereses ≈ <b>${eur(s.totalInterest)}</b>.</div>
+      <div class="eyebrow" style="margin-top:16px">Detalle del préstamo</div>
+      <div style="margin-top:4px">
+        ${detRow('Capital a financiar', eur(s.financed))}
+        ${detRow('Entrada aportada', eur(s.down))}
+        ${detRow('Interés (TIN)', String(s.interest).replace('.',',')+' %')}
+        ${detRow('Plazo', s.years+' años')}
+        ${detRow('Intereses totales', '≈ '+eur(s.totalInterest))}
+      </div>
     </div>` : `
     <div class="card" style="text-align:center;padding:24px 20px">
       <div class="house-icon" style="margin:0 auto 12px"><i class="ph-fill ph-bank"></i></div>
