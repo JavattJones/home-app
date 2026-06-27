@@ -926,5 +926,14 @@ renderResumen();
 renderAnadir();
 renderMovimientos();
 renderAjustes();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if('serviceWorker' in navigator){
+  const hadController = !!navigator.serviceWorker.controller;   // ya había una versión instalada
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(refreshing) return; refreshing = true;
+    if(hadController) location.reload();   // hay versión nueva activa → recarga sola (no en la 1ª instalación)
+  });
+  const reg = navigator.serviceWorker.register('./sw.js');
+  reg.then(r=>{ if(r){ r.update(); setInterval(()=>r.update(), 60*60*1000); } }).catch(()=>{});
+}
 syncFull(false);
