@@ -769,7 +769,7 @@ function renderAjustes(){
 
     <div class="sec-title serif">Sincronización (GitHub)</div>
     <div class="set-card" style="padding:16px">
-      <div class="gh-field"><label><i class="ph ph-user"></i> Usuario / organización</label><input id="gh-owner" placeholder="tu-usuario" value="${gh?(gh.owner||''):''}"></div>
+      <div class="gh-field"><label><i class="ph ph-user"></i> Dueño del repo de datos</label><input id="gh-owner" placeholder="p. ej. JavattJones" value="${gh?(gh.owner||''):''}"></div>
       <div class="gh-field"><label><i class="ph ph-github-logo"></i> Repositorio de datos</label><input id="gh-repo" placeholder="home-data" value="${gh?(gh.repo||''):''}"></div>
       <div class="gh-field"><label><i class="ph ph-key"></i> Token (fine-grained, solo ese repo)</label><input id="gh-token" type="password" placeholder="github_pat_…" value="${gh&&!gh.enc?(gh.token||''):''}"></div>
       <div style="display:flex;gap:10px;padding:14px 16px 2px">
@@ -777,7 +777,7 @@ function renderAjustes(){
         <button class="btn-primary ghost" id="gh-sync" style="margin-top:0;height:46px;width:54px" title="Sincronizar ahora"><i class="ph ph-arrows-clockwise"></i></button>
       </div>
       <p id="gh-msg" class="set-note" style="padding:6px 16px 0;min-height:6px;color:var(--javi-deep);font-weight:700"></p>
-      <p class="set-note">El token se cifra con una contraseña y se queda en este dispositivo. Los datos viajan directos entre tu móvil y GitHub. Cada uno conecta su propio token.</p>
+      <p class="set-note">El <b>dueño</b> y el <b>repositorio</b> son los del propietario de los datos (los mismos en ambos móviles). Lo que os identifica es vuestro <b>token</b>, que se cifra con una contraseña y se queda en este dispositivo.</p>
     </div>
 
     <div class="sec-title serif">Copia de seguridad</div>
