@@ -638,9 +638,22 @@ function renderHipoteca(){
       <div class="house-icon" style="margin:0 auto 12px"><i class="ph-fill ph-bank"></i></div>
       <div class="muted">Rellenad la entrada, el tipo de interés y los años para ver vuestra cuota y el gasto mensual.</div>
     </div>`;
+  const amortCard = s.hasMortgage ? `
+    <div class="sec-title serif">Intereses vs. capital por año</div>
+    <div class="card">
+      <div class="chart-head">
+        <div class="legend-people">
+          <span><span class="dot" style="background:#C16544"></span>Intereses</span>
+          <span><span class="dot" style="background:#2E6B5E"></span>Capital</span>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-amort"></canvas></div>
+      <div class="chart-cap"><i class="ph ph-trend-down" style="color:var(--javi)"></i> Al principio cada cuota es casi toda intereses; con los años amortizáis cada vez más capital.</div>
+    </div>` : '';
   $('#s-hipoteca').innerHTML = `
     <div style="height:6px"></div>
     ${result}
+    ${amortCard}
     <div class="sec-title serif">Parámetros</div>
     <div class="set-card" style="padding:16px">
       <div class="gh-field"><label><i class="ph ph-coins"></i> Entrada / ahorro aportado (€)</label><input id="mg-down" type="number" inputmode="numeric" placeholder="por defecto, lo aportado: ${eur(s.totalAport)}" value="${mgVal('down')}"></div>
@@ -659,6 +672,40 @@ function renderHipoteca(){
     save(); renderHipoteca(); }; };
   mgBind('mg-down','down'); mgBind('mg-interest','interest'); mgBind('mg-years','years');
   mgBind('mg-community','community'); mgBind('mg-insurance','insurance'); mgBind('mg-ibi','ibi');
+  requestAnimationFrame(buildAmort);
+}
+
+let amortChart=null;
+function buildAmort(){
+  const c = document.getElementById('chart-amort'); if(!c) return;
+  if(amortChart) amortChart.destroy();
+  const s = stats();
+  if(!s.hasMortgage) return;
+  const im = s.interest/100/12, M = s.monthlyMortgage, nm = s.years*12;
+  let saldo = s.financed;
+  const yInterest = new Array(s.years).fill(0), yPrincipal = new Array(s.years).fill(0), labels = [];
+  for(let k=0;k<nm;k++){
+    const interes = saldo*im;
+    let capital = M - interes;
+    if(capital>saldo) capital = saldo;   // ajuste de la última cuota
+    saldo -= capital;
+    const yr = Math.floor(k/12);
+    if(yr<s.years){ yInterest[yr]+=interes; yPrincipal[yr]+=capital; }
+  }
+  for(let y=0;y<s.years;y++) labels.push(String(y+1));
+  amortChart = new Chart(c,{ type:'bar',
+    data:{ labels, datasets:[
+      { label:'Intereses', data:yInterest.map(v=>Math.round(v)), backgroundColor:'#C16544', stack:'a', borderRadius:3, maxBarThickness:28 },
+      { label:'Capital',   data:yPrincipal.map(v=>Math.round(v)), backgroundColor:'#2E6B5E', stack:'a', borderRadius:3, maxBarThickness:28 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      plugins:{ legend:{display:false},
+        tooltip:{ backgroundColor:'#2B2521', padding:11, cornerRadius:10, titleFont:{family:'Hanken Grotesk',weight:'700'}, bodyFont:{family:'Hanken Grotesk'}, footerFont:{family:'Hanken Grotesk',weight:'700'},
+          callbacks:{ title:(it)=>'Año '+it[0].label, label:(ctx)=>` ${ctx.dataset.label}: ${eur(ctx.raw)}`,
+            footer:(it)=>'Pagado ese año: '+eur(it.reduce((a,x)=>a+x.raw,0)) } } },
+      scales:{ x:{ stacked:true, grid:{display:false}, border:{display:false}, ticks:{color:'#A89A8C',font:{family:'Hanken Grotesk',size:10,weight:'600'}, maxTicksLimit:10, autoSkip:true} },
+        y:{ stacked:true, grid:{color:'#F3ECE1'}, border:{display:false}, ticks:{color:'#A89A8C',font:{family:'Hanken Grotesk',size:10}, maxTicksLimit:5, callback:v=> v>=1000?(v/1000)+'k €':v+' €' } } } }
+  });
 }
 
 /* ============================================================
