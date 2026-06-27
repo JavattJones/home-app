@@ -91,8 +91,9 @@ function stats(){
   // ---- hipoteca y gasto mensual estimado ----
   const mg = settings.mortgage || {};
   const num = v => (v==null || v==='') ? null : Number(v);
-  const down = num(mg.down)!=null ? num(mg.down) : totalAport;   // entrada / ahorro aportado
-  const financed = Math.max(0, priceNow - down);                 // capital a financiar
+  const resto = Math.max(0, priceNow - totalAport);              // lo que queda por cubrir (precio − aportado)
+  const downExtra = num(mg.down) || 0;                           // entrada extra al firmar, sobre el resto
+  const financed = Math.max(0, resto - downExtra);               // capital a financiar = precio − aportado − entrada
   const interest = num(mg.interest) || 0;                        // TIN anual %
   const years = num(mg.years) || 0;                              // plazo en años
   const im = interest/100/12, nm = years*12;                     // tipo mensual y nº de cuotas
@@ -109,7 +110,7 @@ function stats(){
   return { totalAport, aportBy, share, bal, owe, splitReal,
            count:movements.length, months:monthsSet, monthly, perMonth, byCategory,
            priceInitial, priceNow, variance, variancePct, remaining, fundedPct,
-           down, financed, interest, years, monthlyMortgage, community, insurance, ibiMonthly,
+           resto, downExtra, financed, interest, years, monthlyMortgage, community, insurance, ibiMonthly,
            monthlyTotal, totalInterest, hasMortgage, monthlyByPerson };
 }
 const cum = arr => { let t=0; return arr.map(v=>t+=v); };
@@ -627,8 +628,10 @@ function renderHipoteca(){
       </div>
       <div class="eyebrow" style="margin-top:16px">Detalle del préstamo</div>
       <div style="margin-top:4px">
-        ${detRow('Capital a financiar', eur(s.financed))}
-        ${detRow('Entrada aportada', eur(s.down))}
+        ${detRow('Precio de la vivienda', eur(s.priceNow))}
+        ${detRow('Ya aportado', '− '+eur(s.totalAport))}
+        ${s.downExtra?detRow('Entrada al firmar', '− '+eur(s.downExtra)):''}
+        <div style="border-top:1px solid var(--line-soft);margin-top:2px;padding-top:2px">${detRow('Capital a financiar', eur(s.financed))}</div>
         ${detRow('Interés (TIN)', String(s.interest).replace('.',',')+' %')}
         ${detRow('Plazo', s.years+' años')}
         ${detRow('Intereses totales', '≈ '+eur(s.totalInterest))}
@@ -656,13 +659,13 @@ function renderHipoteca(){
     ${amortCard}
     <div class="sec-title serif">Parámetros</div>
     <div class="set-card" style="padding:16px">
-      <div class="gh-field"><label><i class="ph ph-coins"></i> Entrada / ahorro aportado (€)</label><input id="mg-down" type="number" inputmode="numeric" placeholder="por defecto, lo aportado: ${eur(s.totalAport)}" value="${mgVal('down')}"></div>
+      <div class="gh-field"><label><i class="ph ph-coins"></i> Entrada extra al firmar (€)</label><input id="mg-down" type="number" inputmode="numeric" placeholder="0 — además de lo aportado" value="${mgVal('down')}"></div>
       <div class="gh-field"><label><i class="ph ph-percent"></i> Tipo de interés anual — TIN (%)</label><input id="mg-interest" type="number" inputmode="decimal" step="0.01" placeholder="p. ej. 2,9" value="${mgVal('interest')}"></div>
       <div class="gh-field"><label><i class="ph ph-calendar-blank"></i> Plazo (años)</label><input id="mg-years" type="number" inputmode="numeric" placeholder="p. ej. 30" value="${mgVal('years')}"></div>
       <div class="gh-field"><label><i class="ph ph-buildings"></i> Comunidad (€/mes)</label><input id="mg-community" type="number" inputmode="decimal" placeholder="0" value="${mgVal('community')}"></div>
       <div class="gh-field"><label><i class="ph ph-shield-check"></i> Seguros: hogar + vida (€/mes)</label><input id="mg-insurance" type="number" inputmode="decimal" placeholder="0" value="${mgVal('insurance')}"></div>
       <div class="gh-field"><label><i class="ph ph-receipt"></i> IBI (€/año)</label><input id="mg-ibi" type="number" inputmode="decimal" placeholder="0" value="${mgVal('ibi')}"></div>
-      <p class="set-note">Estima la cuota (sistema francés: cuota constante) y el gasto mensual de la vivienda. Si dejas la entrada vacía, se usa lo aportado (${eur(s.totalAport)}). El reparto sigue el objetivo de Ajustes.</p>
+      <p class="set-note">El <b>capital a financiar</b> = precio − lo aportado (${eur(s.totalAport)}) − entrada. La <b>entrada</b> es el dinero extra que pongáis al firmar, sobre lo que ya queda. Cuota por sistema francés (constante); el reparto sigue el objetivo de Ajustes.</p>
     </div>
     <div style="height:8px"></div>`;
   const mgBind=(id,key)=>{ const el=$('#'+id); if(!el) return; el.onchange=()=>{
