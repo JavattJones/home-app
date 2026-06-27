@@ -36,12 +36,15 @@ Pulsa **Guardar y probar**. El token se cifra con una contraseña y se guarda so
 
 ## Uso
 
-- **Resumen** → el **precio de la casa** y su desviación, % financiado e **hipoteca estimada**; debajo, en secundario, **quién debe a quién** y el reparto real vs. objetivo; KPIs y gráficas (evolución del precio, aportaciones mes a mes, por categoría).
+- **Resumen** → el **precio de la casa** y su desviación, % financiado y lo que falta por aportar; una gráfica única que combina el **precio** (con su desviación) y lo **aportado**; debajo, en secundario, **quién debe a quién** y el reparto real vs. objetivo; KPIs y gráficas (aportaciones mes a mes, por categoría).
 - **Añadir** → registra cada movimiento:
   - **Aportación a la casa**: dinero que pone uno (entrada, cuota de la cooperativa, derrama, notaría…).
   - **Liquidación**: cuando uno paga al otro para cuadrar el balance.
 - **Movimientos** → todos, con filtros por persona y categoría; editar o eliminar.
-- **Ajustes** → los nombres, reparto objetivo (50/50 por defecto), el **precio de la casa** (con su historial de revisiones), categorías, sincronización y copia de seguridad.
+- **Hipoteca** → estima la **cuota mensual** (sistema francés) y el **gasto mensual total** de la vivienda (hipoteca + comunidad + seguros + IBI), repartido entre los dos. Parámetros configurables: entrada/ahorro, tipo de interés (TIN), años, comunidad, seguros e IBI.
+- **Ajustes** → los nombres (configurables), reparto objetivo (50/50 por defecto), el **precio de la casa** (con su historial de revisiones, editables), categorías, sincronización y copia de seguridad.
+
+> **Reutilizable**: el código no está atado a ningún nombre. Cualquiera puede hacer **fork**, crear su propio repo de datos privado y desplegar su instancia; los nombres de las dos personas se configuran en Ajustes.
 
 ## Cómo se calcula el balance
 
@@ -55,7 +58,7 @@ Si sale **positivo**, ha puesto de más y el otro le debe esa cantidad. Cuando u
 
 ## Diseño
 
-Interfaz cálida y editorial, pensada para móvil: fondo crema, tipografías Instrument Serif (números y títulos) y Hanken Grotesk (UI), tarjetas redondeadas y microinteracciones suaves (bottom-sheet, toasts). Cada persona tiene su color: **Javi** verde pino, **Andrea** terracota. Gráficas con Chart.js; iconografía Phosphor.
+Interfaz cálida y editorial, pensada para móvil: fondo crema, tipografías Instrument Serif (números y títulos) y Hanken Grotesk (UI), tarjetas redondeadas y microinteracciones suaves (bottom-sheet, toasts). Cada persona tiene su color: la primera verde pino, la segunda terracota. Gráficas con Chart.js; iconografía Phosphor.
 
 ## Copia de seguridad
 

@@ -345,3 +345,14 @@ nav.tabbar{flex-shrink:0;background:#fff;border-top:1px solid var(--line);paddin
 .empty{text-align:center;padding:50px 24px;color:var(--ink3);}
 .empty i{font-size:42px;color:var(--line);}
 .empty p{font-size:14px;font-weight:600;margin-top:12px;}
+
+/* ---------- iOS / PWA: safe areas, sin zoom de texto, sin rebote, 5 pestañas ---------- */
+html,body{ -webkit-text-size-adjust:100%; }
+main{ overscroll-behavior-y:contain; }
+.appbar{ padding-top:calc(8px + env(safe-area-inset-top)); }
+nav.tabbar{ padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
+.sheet{ padding-bottom:calc(26px + env(safe-area-inset-bottom)); }
+.toast{ bottom:calc(96px + env(safe-area-inset-bottom)); }
+.tab{ padding:4px 4px; min-width:0; }
+.tab span{ white-space:nowrap; font-size:10px; }
+@media (max-width:480px){ .phone{ height:100vh; height:100dvh; } }

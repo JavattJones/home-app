@@ -6,8 +6,8 @@ const LS_DATA = "home:data", LS_GH = "home:gh", LS_SHA = "home:sha", LS_DIRTY = 
 const DEFAULT_CATS = ['Entrada','Cuota cooperativa','Derrama','Notaría/Gestoría','Mobiliario','Otros'];
 
 const PEOPLE = {
-  javi:   { name:'Javi',   initial:'J', color:'var(--javi)',   soft:'var(--javi-soft)',   hex:'#2E6B5E' },
-  andrea: { name:'Andrea', initial:'A', color:'var(--andrea)', soft:'var(--andrea-soft)', hex:'#C16544' }
+  javi:   { name:'Persona A', color:'var(--javi)',   soft:'var(--javi-soft)',   hex:'#2E6B5E' },
+  andrea: { name:'Persona B', color:'var(--andrea)', soft:'var(--andrea-soft)', hex:'#C16544' }
 };
 let settings = { targetJavi: 50, mortgage: { down:null, interest:null, years:null, community:0, insurance:0, ibi:0 } };
 
@@ -115,8 +115,9 @@ function stats(){
 const cum = arr => { let t=0; return arr.map(v=>t+=v); };
 
 /* ---------------- avatar / row markup ---------------- */
+function inicialDe(key){ const n=((PEOPLE[key]&&PEOPLE[key].name)||'').trim(); return n?n.charAt(0).toUpperCase():'·'; }
 function avatar(key,cls=''){ const p=PEOPLE[key];
-  return `<span class="av ${cls}" style="background:${p.color}">${p.initial}</span>`; }
+  return `<span class="av ${cls}" style="background:${p.color}">${inicialDe(key)}</span>`; }
 
 function movRow(m){
   if(m.type==='aportacion'){
@@ -158,7 +159,8 @@ function renderAppbar(tab){
     const map = {
       anadir:{t:'Añadir', s:'Una aportación o una liquidación'},
       movimientos:{t:'Movimientos', s:`${movements.length} en total`},
-      ajustes:{t:'Ajustes', s:'Vuestra casa, a vuestra manera'}
+      hipoteca:{t:'Hipoteca', s:'Vuestra cuota y gasto mensual estimado'},
+      ajustes:{t:'Ajustes', s:'A vuestra manera'}
     };
     const m = map[tab];
     bar.innerHTML = `<div class="title"><div><h1 class="serif">${m.t}</h1><div class="sub">${m.s}</div></div></div>`;
@@ -214,7 +216,7 @@ function renderResumen(){
 
     <div class="house-stats">
       <div class="hstat"><div class="lab"><i class="ph ph-coins"></i> Aportado entre los dos</div><div class="val tnum">${eur(s.totalAport)}</div></div>
-      <div class="hstat accent"><div class="lab"><i class="ph ph-bank"></i> Queda · futura hipoteca</div><div class="val tnum">${eur(s.remaining)}</div></div>
+      <div class="hstat accent"><div class="lab"><i class="ph ph-bank"></i> Falta por aportar</div><div class="val tnum">${eur(s.remaining)}</div></div>
     </div>` : `
     <div class="card house-hero">
       <div class="row-between" style="align-items:flex-start">
@@ -236,37 +238,6 @@ function renderResumen(){
       <div class="chart-cap" id="price-cap"></div>
     </div>` : '';
 
-  const gastoRow = (ic,label,val)=>`<div class="row-between" style="padding:8px 0"><span style="display:flex;align-items:center;gap:9px;font-weight:600"><i class="ph ${ic}" style="color:var(--ink2)"></i>${label}</span><span class="tnum" style="font-weight:800">${eur(val)}</span></div>`;
-  const mortgageSection = !hasPrice ? '' : (s.hasMortgage ? `
-    <div class="sec-title serif">Hipoteca y gasto mensual estimado</div>
-    <div class="card">
-      <div class="row-between" style="align-items:flex-start">
-        <div>
-          <div class="eyebrow">Gasto mensual estimado</div>
-          <div class="house-price serif tnum" style="font-size:42px">${eur(s.monthlyTotal)}</div>
-          <div class="muted" style="margin-top:2px">al mes entre los dos</div>
-        </div>
-        <div class="house-icon"><i class="ph-fill ph-bank"></i></div>
-      </div>
-      <div style="margin-top:12px;border-top:1px solid var(--line-soft);padding-top:6px">
-        ${gastoRow('ph-bank','Hipoteca', s.monthlyMortgage)}
-        ${s.community?gastoRow('ph-buildings','Comunidad', s.community):''}
-        ${s.insurance?gastoRow('ph-shield-check','Seguros (hogar + vida)', s.insurance):''}
-        ${s.ibiMonthly?gastoRow('ph-receipt','IBI (mensualizado)', s.ibiMonthly):''}
-      </div>
-      <div class="split-legend" style="margin-top:6px;border-top:1px solid var(--line-soft);padding-top:12px">
-        <span><span class="dot" style="background:var(--javi)"></span>${PEOPLE.javi.name} <b>${eur(s.monthlyByPerson.javi)}</b>/mes</span>
-        <span><b>${eur(s.monthlyByPerson.andrea)}</b>/mes ${PEOPLE.andrea.name} <span class="dot" style="background:var(--andrea)"></span></span>
-      </div>
-      <div class="chart-cap"><i class="ph ph-info"></i> Financiáis <b>${eur(s.financed)}</b> (precio − entrada de ${eur(s.down)}) a <b>${String(s.interest).replace('.',',')} %</b> en <b>${s.years} años</b> · intereses ≈ <b>${eur(s.totalInterest)}</b>. <button class="linkish" data-action="ir-hipoteca">Ajustar</button></div>
-    </div>` : `
-    <div class="sec-title serif">Hipoteca y gasto mensual estimado</div>
-    <div class="card" style="text-align:center;padding:26px 20px">
-      <div class="house-icon" style="margin:0 auto 12px"><i class="ph-fill ph-bank"></i></div>
-      <div class="muted">Define la entrada, el tipo de interés y los años para estimar vuestra cuota y el gasto mensual de la casa.</div>
-      <button class="hero-cta" data-action="ir-hipoteca" style="margin-top:14px;background:var(--javi-soft);color:var(--javi-deep)"><i class="ph ph-bank"></i> Configurar la hipoteca</button>
-    </div>`);
-
   const balHTML = s.owe ? (()=>{ const from=PEOPLE[s.owe.from], to=PEOPLE[s.owe.to];
     return `<div class="row-between">
         <div class="bm-text"><div class="eyebrow">Entre vosotros</div>
@@ -274,7 +245,7 @@ function renderResumen(){
         <button class="bm-btn" data-action="liquidar"><i class="ph ph-handshake"></i> Saldar</button>
       </div>`; })()
     : `<div class="row-between"><div class="bm-text"><div class="eyebrow">Entre vosotros</div>
-        <div class="bm-phrase"><span class="paz-ic"><i class="ph-fill ph-check-circle"></i></span> Estáis en paz</div></div></div>`;
+        <div class="bm-phrase"><span class="paz-ic"><i class="ph-fill ph-check-circle"></i></span> No os debéis nada</div></div></div>`;
 
   const movsSection = hasMovs ? `
     <div class="sec-title serif">Vuestra casa, mes a mes</div>
@@ -319,7 +290,6 @@ function renderResumen(){
   $('#s-resumen').innerHTML = `
     ${houseHero}
     ${priceSection}
-    ${mortgageSection}
 
     <div class="sec-title serif">Entre vosotros</div>
     <div class="card balance-mini">
@@ -358,7 +328,6 @@ function renderResumen(){
   const vt = $('[data-action="ver-todos"]'); if(vt) vt.onclick=()=>switchTab('movimientos');
   $('#s-resumen').querySelectorAll('[data-action="ir-precio"]').forEach(b=>b.onclick=()=>switchTab('ajustes'));
   $('#s-resumen').querySelectorAll('[data-action="ir-anadir"]').forEach(b=>b.onclick=()=>switchTab('anadir'));
-  $('#s-resumen').querySelectorAll('[data-action="ir-hipoteca"]').forEach(b=>b.onclick=()=>{ switchTab('ajustes'); const card=document.getElementById('mortgage-card'); if(card&&card.scrollIntoView) setTimeout(()=>card.scrollIntoView({behavior:'smooth',block:'start'}),60); });
   bindMovRows($('#s-resumen'));
   requestAnimationFrame(()=>{ if(hasPrice) buildPrice(); if(hasMovs){ buildMonthly(); buildDonut(); } });
 }
@@ -612,20 +581,86 @@ function renderMovimientos(){
 }
 
 /* ============================================================
+   HIPOTECA (pestaña propia: estimación + parámetros)
+   ============================================================ */
+function renderHipoteca(){
+  const s = stats();
+  const mgVal = k => { const v = settings.mortgage ? settings.mortgage[k] : null; return (v==null || v==='') ? '' : v; };
+  if(!priceHistory.length){
+    $('#s-hipoteca').innerHTML = `
+      <div class="card" style="text-align:center;padding:36px 22px;margin-top:8px">
+        <div class="house-icon" style="margin:0 auto 12px;width:60px;height:60px;border-radius:18px;font-size:30px"><i class="ph-fill ph-bank"></i></div>
+        <h2 class="serif" style="font-size:24px;margin:0 0 6px">Aún no hay precio</h2>
+        <p class="muted" style="max-width:280px;margin:0 auto">Fijad primero el precio de la casa para estimar la hipoteca y el gasto mensual.</p>
+        <button class="hero-cta" data-action="ir-precio" style="margin-top:16px"><i class="ph ph-house-line"></i> Ir a Ajustes</button>
+      </div>`;
+    const ip=$('#s-hipoteca [data-action="ir-precio"]'); if(ip) ip.onclick=()=>switchTab('ajustes');
+    return;
+  }
+  const gastoRow = (ic,label,val)=>`<div class="row-between" style="padding:8px 0"><span style="display:flex;align-items:center;gap:9px;font-weight:600"><i class="ph ${ic}" style="color:var(--ink2)"></i>${label}</span><span class="tnum" style="font-weight:800">${eur(val)}</span></div>`;
+  const result = s.hasMortgage ? `
+    <div class="card">
+      <div class="row-between" style="align-items:flex-start">
+        <div>
+          <div class="eyebrow">Gasto mensual estimado</div>
+          <div class="house-price serif tnum" style="font-size:42px">${eur(s.monthlyTotal)}</div>
+          <div class="muted" style="margin-top:2px">al mes entre los dos</div>
+        </div>
+        <div class="house-icon"><i class="ph-fill ph-bank"></i></div>
+      </div>
+      <div style="margin-top:12px;border-top:1px solid var(--line-soft);padding-top:6px">
+        ${gastoRow('ph-bank','Hipoteca', s.monthlyMortgage)}
+        ${s.community?gastoRow('ph-buildings','Comunidad', s.community):''}
+        ${s.insurance?gastoRow('ph-shield-check','Seguros (hogar + vida)', s.insurance):''}
+        ${s.ibiMonthly?gastoRow('ph-receipt','IBI (mensualizado)', s.ibiMonthly):''}
+      </div>
+      <div class="split-legend" style="margin-top:6px;border-top:1px solid var(--line-soft);padding-top:12px">
+        <span><span class="dot" style="background:var(--javi)"></span>${PEOPLE.javi.name} <b>${eur(s.monthlyByPerson.javi)}</b>/mes</span>
+        <span><b>${eur(s.monthlyByPerson.andrea)}</b>/mes ${PEOPLE.andrea.name} <span class="dot" style="background:var(--andrea)"></span></span>
+      </div>
+      <div class="chart-cap"><i class="ph ph-info"></i> Financiáis <b>${eur(s.financed)}</b> (precio − entrada de ${eur(s.down)}) a <b>${String(s.interest).replace('.',',')} %</b> en <b>${s.years} años</b> · intereses ≈ <b>${eur(s.totalInterest)}</b>.</div>
+    </div>` : `
+    <div class="card" style="text-align:center;padding:24px 20px">
+      <div class="house-icon" style="margin:0 auto 12px"><i class="ph-fill ph-bank"></i></div>
+      <div class="muted">Rellenad la entrada, el tipo de interés y los años para ver vuestra cuota y el gasto mensual.</div>
+    </div>`;
+  $('#s-hipoteca').innerHTML = `
+    <div style="height:6px"></div>
+    ${result}
+    <div class="sec-title serif">Parámetros</div>
+    <div class="set-card" style="padding:16px">
+      <div class="gh-field"><label><i class="ph ph-coins"></i> Entrada / ahorro aportado (€)</label><input id="mg-down" type="number" inputmode="numeric" placeholder="por defecto, lo aportado: ${eur(s.totalAport)}" value="${mgVal('down')}"></div>
+      <div class="gh-field"><label><i class="ph ph-percent"></i> Tipo de interés anual — TIN (%)</label><input id="mg-interest" type="number" inputmode="decimal" step="0.01" placeholder="p. ej. 2,9" value="${mgVal('interest')}"></div>
+      <div class="gh-field"><label><i class="ph ph-calendar-blank"></i> Plazo (años)</label><input id="mg-years" type="number" inputmode="numeric" placeholder="p. ej. 30" value="${mgVal('years')}"></div>
+      <div class="gh-field"><label><i class="ph ph-buildings"></i> Comunidad (€/mes)</label><input id="mg-community" type="number" inputmode="decimal" placeholder="0" value="${mgVal('community')}"></div>
+      <div class="gh-field"><label><i class="ph ph-shield-check"></i> Seguros: hogar + vida (€/mes)</label><input id="mg-insurance" type="number" inputmode="decimal" placeholder="0" value="${mgVal('insurance')}"></div>
+      <div class="gh-field"><label><i class="ph ph-receipt"></i> IBI (€/año)</label><input id="mg-ibi" type="number" inputmode="decimal" placeholder="0" value="${mgVal('ibi')}"></div>
+      <p class="set-note">Estima la cuota (sistema francés: cuota constante) y el gasto mensual de la vivienda. Si dejas la entrada vacía, se usa lo aportado (${eur(s.totalAport)}). El reparto sigue el objetivo de Ajustes.</p>
+    </div>
+    <div style="height:8px"></div>`;
+  const mgBind=(id,key)=>{ const el=$('#'+id); if(!el) return; el.onchange=()=>{
+    settings.mortgage = settings.mortgage || {};
+    const v = el.value.trim();
+    settings.mortgage[key] = (v==='') ? null : Number(v);
+    save(); renderHipoteca(); }; };
+  mgBind('mg-down','down'); mgBind('mg-interest','interest'); mgBind('mg-years','years');
+  mgBind('mg-community','community'); mgBind('mg-insurance','insurance'); mgBind('mg-ibi','ibi');
+}
+
+/* ============================================================
    AJUSTES
    ============================================================ */
 let priceEditIdx = null;   // índice de la revisión del precio en edición (o null)
 function renderAjustes(){
   const s = stats();
   const pe = (priceEditIdx!=null && priceHistory[priceEditIdx]) ? priceHistory[priceEditIdx] : null;
-  const mgVal = k => { const v = settings.mortgage ? settings.mortgage[k] : null; return (v==null || v==='') ? '' : v; };
   const aV = s.variance, aCls = aV>0?'up':aV<0?'down':'flat', aIc = aV>0?'ph-trend-up':aV<0?'ph-trend-down':'ph-minus';
   $('#s-ajustes').innerHTML = `
     <div class="sec-title serif" style="margin-top:10px">Personas</div>
     <div class="set-card">
-      <div class="set-row"><span class="swatch" style="background:var(--javi)">${PEOPLE.javi.initial}</span>
+      <div class="set-row"><span class="swatch" style="background:var(--javi)">${inicialDe('javi')}</span>
         <input class="name" id="name-javi" value="${PEOPLE.javi.name}" maxlength="18"></div>
-      <div class="set-row"><span class="swatch" style="background:var(--andrea)">${PEOPLE.andrea.initial}</span>
+      <div class="set-row"><span class="swatch" style="background:var(--andrea)">${inicialDe('andrea')}</span>
         <input class="name" id="name-andrea" value="${PEOPLE.andrea.name}" maxlength="18"></div>
     </div>
 
@@ -660,17 +695,6 @@ function renderAjustes(){
         ${pe?'<button id="pr-cancel-btn" class="pr-add-btn" style="background:var(--bg);color:var(--ink2)"><i class="ph ph-x"></i> Cancelar</button>':''}
       </div>
       <p class="set-note">El precio puede cambiar (derramas, ajustes de la cooperativa…). Cada revisión actualiza la desviación y la hipoteca estimada en el Resumen.</p>
-    </div>
-
-    <div class="sec-title serif">Hipoteca y gastos</div>
-    <div class="set-card" id="mortgage-card" style="padding:16px">
-      <div class="gh-field"><label><i class="ph ph-coins"></i> Entrada / ahorro aportado (€)</label><input id="mg-down" type="number" inputmode="numeric" placeholder="por defecto, lo aportado: ${eur(s.totalAport)}" value="${mgVal('down')}"></div>
-      <div class="gh-field"><label><i class="ph ph-percent"></i> Tipo de interés anual — TIN (%)</label><input id="mg-interest" type="number" inputmode="decimal" step="0.01" placeholder="p. ej. 2,9" value="${mgVal('interest')}"></div>
-      <div class="gh-field"><label><i class="ph ph-calendar-blank"></i> Plazo (años)</label><input id="mg-years" type="number" inputmode="numeric" placeholder="p. ej. 30" value="${mgVal('years')}"></div>
-      <div class="gh-field"><label><i class="ph ph-buildings"></i> Comunidad (€/mes)</label><input id="mg-community" type="number" inputmode="decimal" placeholder="0" value="${mgVal('community')}"></div>
-      <div class="gh-field"><label><i class="ph ph-shield-check"></i> Seguros: hogar + vida (€/mes)</label><input id="mg-insurance" type="number" inputmode="decimal" placeholder="0" value="${mgVal('insurance')}"></div>
-      <div class="gh-field"><label><i class="ph ph-receipt"></i> IBI (€/año)</label><input id="mg-ibi" type="number" inputmode="decimal" placeholder="0" value="${mgVal('ibi')}"></div>
-      <p class="set-note">Estima la cuota de la hipoteca (sistema francés: cuota constante) y el gasto mensual de la vivienda. Si dejas la entrada vacía, se usa lo que lleváis aportado (${eur(s.totalAport)}). El reparto entre vosotros sigue el objetivo de arriba.</p>
     </div>
 
     <div class="sec-title serif">Categorías</div>
@@ -709,13 +733,6 @@ function renderAjustes(){
   range.oninput=()=>{ settings.targetJavi=parseInt(range.value);
     $('#lbl-j').textContent=settings.targetJavi+'%'; $('#lbl-a').textContent=(100-settings.targetJavi)+'%';
     paintRange(range); save(); renderResumen(); };
-  const mgBind=(id,key)=>{ const el=$('#'+id); if(!el) return; el.onchange=()=>{
-    settings.mortgage = settings.mortgage || {};
-    const v = el.value.trim();
-    settings.mortgage[key] = (v==='') ? null : Number(v);
-    save(); renderResumen(); }; };
-  mgBind('mg-down','down'); mgBind('mg-interest','interest'); mgBind('mg-years','years');
-  mgBind('mg-community','community'); mgBind('mg-insurance','insurance'); mgBind('mg-ibi','ibi');
   $('#set-cats').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
     if(categories.length<=1) return;
     categories=categories.filter(c=>c!==b.dataset.del);
@@ -817,8 +834,8 @@ function switchTab(name){
   document.querySelectorAll('.tab').forEach(t=>{
     const on=t.dataset.tab===name; t.classList.toggle('on',on);
     t.querySelector('i').className = on
-      ? 'ph-fill '+({resumen:'ph-house',anadir:'ph-plus-circle',movimientos:'ph-arrows-left-right',ajustes:'ph-gear-six'}[name])
-      : 'ph '+({resumen:'ph-house',anadir:'ph-plus-circle',movimientos:'ph-arrows-left-right',ajustes:'ph-gear-six'}[t.dataset.tab]);
+      ? 'ph-fill '+({resumen:'ph-house',anadir:'ph-plus-circle',movimientos:'ph-arrows-left-right',hipoteca:'ph-bank',ajustes:'ph-gear-six'}[name])
+      : 'ph '+({resumen:'ph-house',anadir:'ph-plus-circle',movimientos:'ph-arrows-left-right',hipoteca:'ph-bank',ajustes:'ph-gear-six'}[t.dataset.tab]);
   });
   renderAppbar(name);
   $('#main').scrollTop=0;
@@ -833,12 +850,13 @@ function shake(sel){ const el=$(sel); if(!el)return;
   el.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:280});
   el.style.borderColor='var(--andrea)'; setTimeout(()=>el.style.borderColor='',900);
 }
-function refreshAll(){ renderResumen(); renderMovimientos(); renderAppbar(document.querySelector('.tab.on').dataset.tab); }
+function refreshAll(){ renderResumen(); renderMovimientos(); renderHipoteca(); renderAppbar(document.querySelector('.tab.on').dataset.tab); }
 
 /* ---------------- init ---------------- */
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   const name=t.dataset.tab;
   if(name==='anadir' && !form.editId){ form={type:'aportacion',payer:'javi',to:'andrea',category:'Cuota cooperativa',editId:null}; renderAnadir(); }
+  if(name==='hipoteca') renderHipoteca();
   switchTab(name);
 });
 $('#sheet-back').onclick=(e)=>{ if(e.target===$('#sheet-back')) closeSheet(); };
@@ -863,7 +881,7 @@ function buildData(){
 function personName(v, def){ return (v && typeof v==='object') ? (v.name||def) : (typeof v==='string'? v : def); }
 function applyData(d){
   if(!d) return;
-  if(d.people){ PEOPLE.javi.name=personName(d.people.javi,'Javi'); PEOPLE.andrea.name=personName(d.people.andrea,'Andrea'); }
+  if(d.people){ PEOPLE.javi.name=personName(d.people.javi,'Persona A'); PEOPLE.andrea.name=personName(d.people.andrea,'Persona B'); }
   if(d.settings){
     if(d.settings.targetJavi!=null) settings.targetJavi=d.settings.targetJavi;
     settings.mortgage = Object.assign({down:null,interest:null,years:null,community:0,insurance:0,ibi:0}, d.settings.mortgage||{});
@@ -980,6 +998,7 @@ renderAppbar('resumen');
 renderResumen();
 renderAnadir();
 renderMovimientos();
+renderHipoteca();
 renderAjustes();
 if('serviceWorker' in navigator){
   const hadController = !!navigator.serviceWorker.controller;   // ya había una versión instalada
