@@ -4,7 +4,7 @@
    así la app funciona offline tras la primera carga online.
    IMPORTANTE: al desplegar cambios en los assets, sube el número de CACHE
    (home-v1 → home-v2…) o el dispositivo seguirá sirviendo la versión vieja. */
-const CACHE = "home-v6";
+const CACHE = "home-v7";
 const SHELL = [
   "./",
   "./index.html",
