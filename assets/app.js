@@ -393,7 +393,13 @@ function buildPrice(){
     `<span><span class="line-key" style="border-top-color:var(--andrea)"></span>Precio</span>`+
     `<span><span class="line-key dash"></span>Inicial</span>`+
     `<span><span class="line-key" style="border-top-color:var(--javi)"></span>Aportado</span>`;
-  if(cap) cap.innerHTML = `<i class="ph ph-bank" style="color:var(--javi)"></i> Habéis aportado <b>${eur(s.totalAport)}</b> de <b>${eur(s.priceNow)}</b> · faltan <b>${eur(s.remaining)}</b>. Desviación del precio: <b>${s.variance>=0?'+':'−'}${eur(Math.abs(s.variance))}</b>.`;
+  if(cap){
+    let txt = `Habéis aportado <b>${eur(s.totalAport)}</b> de <b>${eur(s.priceNow)}</b>`;
+    txt += s.remaining>0 ? ` · faltan <b>${eur(s.remaining)}</b>` : ` · ¡ya está cubierto!`;
+    if(priceHistory.length>1 && Math.round(s.variance)!==0)
+      txt += ` · el precio ha ${s.variance>0?'subido':'bajado'} <b>${eur(Math.abs(s.variance))}</b> desde el inicial`;
+    cap.innerHTML = `<i class="ph ph-bank" style="color:var(--javi)"></i> ${txt}.`;
+  }
 
   priceChart = new Chart(c,{ type:'line',
     data:{ labels, datasets:[
