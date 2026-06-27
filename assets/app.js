@@ -777,7 +777,11 @@ function renderAjustes(){
         <button class="btn-primary ghost" id="gh-sync" style="margin-top:0;height:46px;width:54px" title="Sincronizar ahora"><i class="ph ph-arrows-clockwise"></i></button>
       </div>
       <p id="gh-msg" class="set-note" style="padding:6px 16px 0;min-height:6px;color:var(--javi-deep);font-weight:700"></p>
-      <p class="set-note">El <b>dueño</b> y el <b>repositorio</b> son los del propietario de los datos (los mismos en ambos móviles). Lo que os identifica es vuestro <b>token</b>, que se cifra con una contraseña y se queda en este dispositivo.</p>
+      ${gh ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0 2px;border-top:1px solid var(--line-soft);margin-top:8px">
+        <span style="font-size:13px;font-weight:700;color:${gh.enc?'var(--javi-deep)':'var(--andrea-deep)'}">${gh.enc?'🔒 Token cifrado (pide contraseña)':'🔓 Token sin cifrar (directo)'}</span>
+        <button id="gh-toggle-enc" style="padding:8px 13px;border-radius:11px;background:var(--bg);border:1px solid var(--line);font-weight:700;font-size:12.5px;color:var(--ink)">${gh.enc?'Quitar cifrado':'Cifrar con contraseña'}</button>
+      </div>` : ''}
+      <p class="set-note">El <b>dueño</b> y el <b>repositorio</b> son los del propietario de los datos (los mismos en ambos móviles). Lo que os identifica es vuestro <b>token</b>. <b>Sin cifrar</b>: sincroniza solo, sin pediros nada. <b>Cifrado</b>: más seguro, pero pide la contraseña al sincronizar.</p>
     </div>
 
     <div class="sec-title serif">Copia de seguridad</div>
@@ -825,6 +829,7 @@ function renderAjustes(){
   { const cb=$('#pr-cancel-btn'); if(cb) cb.onclick=()=>{ priceEditIdx=null; renderAjustes(); }; }
   $('#gh-save').onclick=guardarGitHub;
   $('#gh-sync').onclick=()=>syncFull(true);
+  { const tg=$('#gh-toggle-enc'); if(tg) tg.onclick=toggleCifrado; }
   $('#exp-btn').onclick=exportBackup;
   $('#imp-btn').onclick=()=>$('#imp-file').click();
   $('#imp-file').onchange=importBackup;
@@ -961,9 +966,27 @@ function save(){ persistLocal(); localStorage.setItem(LS_DIRTY,'1'); schedulePus
 function schedulePush(){ if(!gh) return; clearTimeout(pushTimer); pushTimer=setTimeout(doPush, 1200); }
 async function doPush(){
   if(!gh) return;
-  if(!gh.token && !(await ensureToken())){ setSyncStatus('🔒 desbloquea para subir'); return; }
+  // Si el token está cifrado y bloqueado, NO abrimos el modal en cada cambio:
+  // dejamos los datos pendientes y avisamos (se suben con "Sincronizar ahora").
+  if(!gh.token){ setSyncStatus('🔒 cambios sin subir — pulsa ⟳ Sincronizar'); return; }
   try{ await pushRemote(); setSyncStatus('✓ sincronizado'); }
   catch(e){ setSyncStatus('⚠ sin conexión · se subirá luego'); }
+}
+async function toggleCifrado(){
+  if(!gh) return;
+  if(gh.enc){                                   // quitar cifrado → guardar token en claro
+    if(!gh.token && !(await ensureToken())) return;   // necesita la contraseña una vez
+    localStorage.setItem(LS_GH, JSON.stringify({ owner:gh.owner, repo:gh.repo, token:gh.token }));
+    delete gh.enc; gh.locked=false;
+    renderAjustes(); setSyncStatus('Cifrado quitado — sincroniza solo ✓'); syncFull(false);
+  } else {                                      // cifrar → pedir contraseña nueva
+    if(!gh.token || !window.SecureToken) return;
+    const pass = await SecureToken.askNewPassphrase(); if(!pass) return;
+    const enc = await SecureToken.encrypt(gh.token, pass);
+    localStorage.setItem(LS_GH, JSON.stringify({ owner:gh.owner, repo:gh.repo, enc }));
+    gh.enc = enc;
+    renderAjustes(); setSyncStatus('Token cifrado ✓');
+  }
 }
 
 function loadGh(){
