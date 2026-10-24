@@ -376,3 +376,8 @@ nav.tabbar{ padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
 .acct-row{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--ink);font-size:15px;word-break:break-all;}
 .acct-row i{font-size:24px;color:var(--javi);}
 .sync-msg{margin:8px 0 0;font-size:13px;font-weight:700;color:var(--javi-deep);min-height:18px;}
+
+.who-seg{display:flex;gap:8px;}
+.who-seg button{flex:1;height:44px;border-radius:13px;border:1px solid var(--line);background:var(--card);font-weight:700;color:var(--ink2);font-size:14px;}
+.who-seg button.on{background:var(--javi);border-color:var(--javi);color:#fff;}
+.acct-row .ph-bell-ringing{color:var(--javi);}

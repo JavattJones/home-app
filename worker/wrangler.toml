@@ -1,0 +1,10 @@
+name = "home-push"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+[vars]
+FIREBASE_PROJECT = "home-app-e7e7e"
+ALLOWED_ORIGIN = "https://javattjones.github.io"
+VAPID_PUBLIC = "BHd9H9Z9z1g828NBC-9Hm9c182keELq3guJXpzJ1TwuuWCSTkB3hd01vxI9L3Svp0-2sQNHWoncdqA8NTG2TZC8"
+# Secreto (no va en el repo): wrangler secret put VAPID_PRIVATE_JWK

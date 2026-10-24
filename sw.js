@@ -4,7 +4,7 @@
    así la app funciona offline tras la primera carga online.
    IMPORTANTE: al desplegar cambios en los assets, sube el número de CACHE
    (home-v1 → home-v2…) o el dispositivo seguirá sirviendo la versión vieja. */
-const CACHE = "home-v16";
+const CACHE = "home-v17";
 const SHELL = [
   "./",
   "./index.html",
@@ -51,5 +51,28 @@ self.addEventListener("fetch", (e) => {
           return res;
         })
     )
+  );
+});
+
+/* ---------- Notificaciones (Web Push) ---------- */
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.title || "Home", {
+    body: d.body || "",
+    tag: d.tag || "home",
+    icon: "./icons/icon-192.png",
+    badge: "./icons/icon-192.png",
+    data: { url: "./" },
+  }));
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) if ("focus" in c) return c.focus();
+      return self.clients.openWindow("./");
+    })
   );
 });

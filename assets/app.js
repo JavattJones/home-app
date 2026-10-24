@@ -769,6 +769,9 @@ function renderAjustes(){
       <div class="add-cat"><input id="new-cat" placeholder="Nueva categoría" maxlength="24"><button id="add-cat-btn"><i class="ph ph-plus"></i></button></div>
     </div>
 
+    <div class="sec-title serif">Avisos</div>
+    <div class="set-card set-pad" id="avisos-card">${avisosHTML()}</div>
+
     <div class="sec-title serif">Cuenta y sincronización</div>
     <div class="set-card set-pad">
       <div class="acct-row"><i class="ph ph-user-circle"></i><span id="acct-email">${account||'—'}</span></div>
@@ -820,6 +823,7 @@ function renderAjustes(){
     priceHistory.sort((x,y)=> x.date<y.date?-1:x.date>y.date?1:0);
     save(); renderAjustes(); renderResumen(); toast(d?'Revisión guardada':'Precio actualizado'); };
   { const cb=$('#pr-cancel-btn'); if(cb) cb.onclick=()=>{ priceEditIdx=null; renderAjustes(); }; }
+  bindAvisos();
   $('#logout-btn').onclick=async()=>{ if(!confirm('¿Cerrar sesión en este móvil?')) return;
     if(window.HomeCloud) await window.HomeCloud.logout(); };
   $('#exp-btn').onclick=exportBackup;
@@ -993,6 +997,65 @@ function showLogin(on){
   };
 }
 
+/* ---------------- avisos (notificaciones) ---------------- */
+const LS_ME = "home:me";
+function myWho(){ const i=window.HomeCloud&&window.HomeCloud.pushInfo(); return (i&&i.mine&&i.mine.who)||localStorage.getItem(LS_ME)||null; }
+const eur2Fmt = new Intl.NumberFormat('es-ES',{minimumFractionDigits:0,maximumFractionDigits:2});
+const eur2 = n => eur2Fmt.format(+n||0)+' €';
+// Texto del aviso que recibe el otro móvil.
+function describeChanges(ch){
+  const w=myWho(), who=w&&PEOPLE[w]?PEOPLE[w].name:'Alguien';
+  const movTxt=m=> m.type==='liquidacion' ? `liquidación de ${eur2(m.amount)}` : `${m.concept} · ${eur2(m.amount)}`;
+  const tag='home-'+Date.now();
+  if(ch.length===1){ const c=ch[0];
+    if(c.kind==='price'){ const last=c.list&&c.list.length?c.list[c.list.length-1]:null;
+      return { title:'Precio de la casa', body: last?`${who} ha actualizado el precio: ${eur2(last.price)}${last.note?' ('+last.note+')':''}`:`${who} ha cambiado el precio de la casa`, tag }; }
+    const verb={add:'ha apuntado',edit:'ha editado',del:'ha borrado'}[c.op];
+    const title={add:'Nuevo movimiento',edit:'Movimiento editado',del:'Movimiento borrado'}[c.op];
+    return { title, body:`${who} ${verb}: ${movTxt(c.data)}`, tag };
+  }
+  const adds=ch.filter(c=>c.kind==='mov'&&c.op==='add').length;
+  return { title:'Home', body:`${who} ha hecho ${ch.length} cambios${adds?` (${adds} movimiento${adds>1?'s':''} nuevo${adds>1?'s':''})`:''}`, tag };
+}
+function avisosHTML(){
+  const C=window.HomeCloud, i=C&&C.pushInfo();
+  if(!i) return `<p class="sync-msg">Cargando…</p>`;
+  if(!i.configured) return `<p class="set-note" style="padding:0">Los avisos aún no están configurados.</p>`;
+  const otherTxt = i.others.length ? `✓ El otro móvil tiene los avisos activos.` : `El otro móvil aún no ha activado los avisos.`;
+  if(i.mine){
+    const n=PEOPLE[i.mine.who]?PEOPLE[i.mine.who].name:i.mine.who;
+    return `<div class="acct-row"><i class="ph-fill ph-bell-ringing"></i><span>Avisos activos en este móvil (${n})</span></div>
+      <p class="set-note" style="padding:6px 0 0">${otherTxt}</p>
+      <div class="backup-row" style="margin-top:12px">
+        <button class="btn-primary ghost" id="av-test"><i class="ph ph-paper-plane-tilt"></i> Probar</button>
+        <button class="btn-primary ghost" id="av-off"><i class="ph ph-bell-slash"></i> Desactivar</button>
+      </div><p class="login-msg" id="av-msg" style="text-align:left"></p>`;
+  }
+  if(!i.supported || !i.standalone) return `<p class="set-note" style="padding:0">Para recibir avisos, abre Home desde el <b>icono de la pantalla de inicio</b> (en iPhone hace falta iOS 16.4 o superior).</p>`;
+  const sel=localStorage.getItem(LS_ME)||'';
+  return `<p class="set-note" style="padding:0 0 10px">Te avisaremos cuando el otro apunte, edite o borre un movimiento, o cambie el precio de la casa. ¿Quién eres?</p>
+    <div class="who-seg">${['javi','andrea'].map(k=>`<button data-who="${k}" class="${sel===k?'on':''}">${PEOPLE[k].name}</button>`).join('')}</div>
+    <button class="btn-primary" id="av-on" style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px"><i class="ph ph-bell"></i> Activar avisos en este móvil</button>
+    <p class="login-msg" id="av-msg" style="text-align:left"></p>
+    <p class="set-note" style="padding:4px 0 0">${otherTxt}</p>`;
+}
+function bindAvisos(){
+  const card=$('#avisos-card'); if(!card) return;
+  const msg=t=>{ const el=$('#av-msg'); if(el) el.textContent=t; };
+  card.querySelectorAll('[data-who]').forEach(b=>b.onclick=()=>{ localStorage.setItem(LS_ME,b.dataset.who);
+    card.querySelectorAll('[data-who]').forEach(x=>x.classList.toggle('on',x===b)); });
+  const on=$('#av-on'); if(on) on.onclick=async()=>{
+    const who=localStorage.getItem(LS_ME); if(!who){ msg('Elige primero quién eres.'); return; }
+    on.disabled=true; msg('Activando…');
+    try{ await window.HomeCloud.enablePush(who); toast('Avisos activados'); }
+    catch(e){ msg(e.message||String(e)); }
+    finally{ on.disabled=false; }
+  };
+  const off=$('#av-off'); if(off) off.onclick=async()=>{ try{ await window.HomeCloud.disablePush(); toast('Avisos desactivados'); }catch(e){ msg(e.message); } };
+  const t=$('#av-test'); if(t) t.onclick=async()=>{ msg('Enviando…'); try{ await window.HomeCloud.testPush(); msg('Enviado: debería llegarte en unos segundos.'); }catch(e){ msg(e.message||String(e)); } };
+}
+function refreshAvisos(){ const card=$('#avisos-card'); if(card && !card.contains(document.activeElement)){ card.innerHTML=avisosHTML(); bindAvisos(); } }
+
 /* ---------------- puente con cloud.js ---------------- */
 window.HomeApp = {
   toast: t=>toast(t),
@@ -1018,7 +1081,9 @@ window.HomeApp = {
     if(!busy('s-ajustes')) renderAjustes();
     renderAppbar(document.querySelector('.tab.on').dataset.tab);
   },
-  cloudReady(){}
+  describeChanges,
+  pushChanged(){ refreshAvisos(); },
+  cloudReady(){ refreshAvisos(); }
 };
 
 /* ---------------- arranque ---------------- */

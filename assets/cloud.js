@@ -11,7 +11,7 @@ import { initializeApp } from "./vendor/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
          sendPasswordResetEmail } from "./vendor/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-         collection, doc, onSnapshot, writeBatch, getDocsFromServer } from "./vendor/firebase-firestore.js";
+         collection, doc, onSnapshot, writeBatch, getDocsFromServer, setDoc, deleteDoc } from "./vendor/firebase-firestore.js";
 
 // No es secreto: identifica el proyecto. Lo que protege los datos son las reglas de Firestore.
 const firebaseConfig = {
@@ -23,6 +23,9 @@ const firebaseConfig = {
   appId: "1:523480911843:web:0ce07ebf38d4225b765ad6"
 };
 const HOME = "homes/main";
+// Notificaciones: servicio en Cloudflare (worker/) + clave pública VAPID.
+const PUSH_URL = "https://home-push.javattjones.workers.dev";
+const VAPID_PUBLIC = "BHd9H9Z9z1g828NBC-9Hm9c182keELq3guJXpzJ1TwuuWCSTkB3hd01vxI9L3Svp0-2sQNHWoncdqA8NTG2TZC8";
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
@@ -72,15 +75,24 @@ function save(data){
   if (!remote.config || !remote.movements) { App.toast("Conectando… inténtalo en un segundo"); return false; }
   const next = toDocs(data);
   const batch = writeBatch(db);
+  const changes = [];
   let n = 0;
   for (const k in next) {
     const s = JSON.stringify(next[k]);
-    if (known[k] !== s) { batch.set(doc(db, HOME + "/" + k), next[k]); known[k] = s; n++; }
+    if (known[k] !== s) {
+      if (k.startsWith("movements/")) changes.push({ kind: "mov", op: known[k] ? "edit" : "add", data: next[k] });
+      if (k === "config/prices") changes.push({ kind: "price", list: next[k].list });
+      batch.set(doc(db, HOME + "/" + k), next[k]); known[k] = s; n++;
+    }
   }
   for (const k in known) {
-    if (!(k in next)) { batch.delete(doc(db, HOME + "/" + k)); delete known[k]; n++; }
+    if (!(k in next)) {
+      if (k.startsWith("movements/")) changes.push({ kind: "mov", op: "del", data: JSON.parse(known[k]) });
+      batch.delete(doc(db, HOME + "/" + k)); delete known[k]; n++;
+    }
   }
   if (!n) return true;
+  if (changes.length) notifyOthers(changes);
   batch.commit().catch(err => { console.error(err); App.toast("⚠ No se pudo guardar en la nube"); setStatus("⚠ error al subir: " + (err.code || err.message)); });
   return true;
 }
@@ -155,6 +167,78 @@ async function mergeLocalOnce(uid){
   }
 }
 
+/* ============================================================
+   NOTIFICACIONES (Web Push)
+   homes/main/push/{uid} = { who, sub } · suscripción de cada móvil
+   ============================================================ */
+let pushSubs = {};   // uid → { who, sub }
+function listenPush(){
+  unsubs.push(onSnapshot(collection(db, HOME + "/push"), snap => {
+    const m = {}; snap.forEach(d => { m[d.id] = d.data(); }); pushSubs = m;
+    App.pushChanged();
+  }, err => console.error("push", err)));
+}
+const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+
+async function notifyOthers(changes){
+  const me = auth.currentUser; if (!me || PUSH_URL.startsWith("__")) return;
+  const subs = Object.entries(pushSubs).filter(([uid]) => uid !== me.uid).map(([, v]) => v.sub).filter(Boolean);
+  if (!subs.length) return;
+  const msg = App.describeChanges(changes); if (!msg) return;
+  await sendTo(subs, msg).catch(e => console.warn("notify", e));   // sin conexión: ese aviso se pierde, los datos no
+}
+async function sendTo(subs, msg){
+  const me = auth.currentUser;
+  {
+    const token = await me.getIdToken();
+    const r = await fetch(PUSH_URL + "/notify", { method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify(Object.assign({ subs }, msg)) });
+    const j = await r.json().catch(() => null);
+    // Suscripción caducada (el otro desinstaló o revocó): se limpia.
+    if (j && j.results) j.results.forEach((res, i) => {
+      if (res.gone) { const uid = Object.keys(pushSubs).find(u => pushSubs[u].sub === subs[i]); if (uid) deleteDoc(doc(db, HOME + "/push/" + uid)).catch(() => {}); }
+    });
+    if (!r.ok) throw new Error("servicio de avisos: " + r.status);
+    return j;
+  }
+}
+async function testPush(){
+  const mine = pushSubs[auth.currentUser.uid]; if (!mine) throw new Error("Activa primero los avisos.");
+  const j = await sendTo([mine.sub], { title: "Home", body: "Aviso de prueba ✓ — los avisos funcionan en este móvil", tag: "home-test" });
+  const res = j && j.results && j.results[0];
+  if (!res || !(res.status >= 200 && res.status < 300)) throw new Error("El servicio respondió " + (res ? res.status : "?"));
+}
+
+async function currentSub(){
+  if (!pushSupported()) return null;
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+async function enablePush(who){
+  if (!pushSupported()) throw new Error(isStandalone() ? "Este móvil no admite avisos (hace falta iOS 16.4 o superior)." : "Abre Home desde el icono de la pantalla de inicio para activar los avisos.");
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") throw new Error("Has denegado los avisos. Actívalos en Ajustes del iPhone → Notificaciones → Home.");
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC });
+  await setDoc(doc(db, HOME + "/push/" + auth.currentUser.uid), { who, sub: JSON.parse(JSON.stringify(sub)), updatedAt: new Date().toISOString() });
+}
+async function disablePush(){
+  const sub = await currentSub(); if (sub) await sub.unsubscribe().catch(() => {});
+  await deleteDoc(doc(db, HOME + "/push/" + auth.currentUser.uid));
+}
+// Al abrir: si los avisos están activos, refresca la suscripción (iOS a veces la renueva).
+async function refreshPush(){
+  try {
+    const mine = pushSubs[auth.currentUser.uid]; if (!mine || Notification.permission !== "granted") return;
+    const sub = await currentSub(); if (!sub) return;
+    const s = JSON.parse(JSON.stringify(sub));
+    if (JSON.stringify(s) !== JSON.stringify(mine.sub)) await setDoc(doc(db, HOME + "/push/" + auth.currentUser.uid), { who: mine.who, sub: s, updatedAt: new Date().toISOString() });
+  } catch (e) {}
+}
+
 onAuthStateChanged(auth, async user => {
   if (!user) {
     unsubs.forEach(u => u()); unsubs = []; known = {}; remote = { config: null, movements: null };
@@ -166,6 +250,8 @@ onAuthStateChanged(auth, async user => {
   setStatus("↻ conectando…");
   await mergeLocalOnce(user.uid);
   listen();
+  listenPush();
+  setTimeout(refreshPush, 4000);
 });
 
 window.HomeCloud = {
@@ -175,5 +261,12 @@ window.HomeCloud = {
   async login(email, pass){ await signInWithEmailAndPassword(auth, email, pass); },
   async reset(email){ await sendPasswordResetEmail(auth, email); },
   async logout(){ await signOut(auth); },
+  enablePush, disablePush, testPush,
+  pushInfo(){
+    const me = auth.currentUser;
+    return { supported: pushSupported(), standalone: isStandalone(), configured: !PUSH_URL.startsWith("__"),
+      mine: me ? pushSubs[me.uid] || null : null,
+      others: me ? Object.entries(pushSubs).filter(([u]) => u !== me.uid).map(([, v]) => v.who) : [] };
+  },
 };
 App.cloudReady();
