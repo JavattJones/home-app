@@ -1,8 +1,10 @@
 /* ============================================================
    HOME · aportaciones a la casa y balance de la pareja.
-   Datos: JSON en repo privado de GitHub (Contents API) + caché localStorage.
+   Datos: Firebase (Firestore) vía assets/cloud.js + caché localStorage
+   para pintar al instante al abrir.
    ============================================================ */
-const LS_DATA = "home:data", LS_GH = "home:gh", LS_SHA = "home:sha", LS_DIRTY = "home:dirty", DATA_PATH = "home.json";
+const LS_CACHE = "home:cache";
+const LS_LEGACY = "home:data", LEGACY_KEYS = ["home:data","home:gh","home:sha","home:dirty"];   // versión GitHub
 const DEFAULT_CATS = ['Entrada','Cuota cooperativa','Derrama','Notaría/Gestoría','Mobiliario','Otros'];
 
 const PEOPLE = {
@@ -507,7 +509,7 @@ function onSaveMovement(e){
     if(form.type==='aportacion'){ m.category=form.category; delete m.to; } else { m.to=form.to; delete m.category; }
     toast('Movimiento actualizado');
   } else {
-    const m = { id:nextId++, type:form.type, date, payer:form.payer, concept, amount };
+    const m = { id:newId(), type:form.type, date, payer:form.payer, concept, amount };
     if(form.type==='aportacion') m.category=form.category; else m.to=form.to;
     movements.push(m);
     toast(form.type==='aportacion'?'Aportación apuntada':'Liquidación apuntada');
@@ -767,21 +769,12 @@ function renderAjustes(){
       <div class="add-cat"><input id="new-cat" placeholder="Nueva categoría" maxlength="24"><button id="add-cat-btn"><i class="ph ph-plus"></i></button></div>
     </div>
 
-    <div class="sec-title serif">Sincronización (GitHub)</div>
-    <div class="set-card" style="padding:16px">
-      <div class="gh-field"><label><i class="ph ph-user"></i> Dueño del repo de datos</label><input id="gh-owner" placeholder="p. ej. JavattJones" value="${gh?(gh.owner||''):''}"></div>
-      <div class="gh-field"><label><i class="ph ph-github-logo"></i> Repositorio de datos</label><input id="gh-repo" placeholder="home-data" value="${gh?(gh.repo||''):''}"></div>
-      <div class="gh-field"><label><i class="ph ph-key"></i> Token (fine-grained, solo ese repo)</label><input id="gh-token" type="password" placeholder="github_pat_…" value="${gh&&!gh.enc?(gh.token||''):''}"></div>
-      <div style="display:flex;gap:10px;padding:14px 16px 2px">
-        <button class="btn-primary ghost" id="gh-save" style="margin-top:0;height:46px;flex:1"><i class="ph ph-cloud-arrow-up"></i> Guardar y probar</button>
-        <button class="btn-primary ghost" id="gh-sync" style="margin-top:0;height:46px;width:54px" title="Sincronizar ahora"><i class="ph ph-arrows-clockwise"></i></button>
-      </div>
-      <p id="gh-msg" class="set-note" style="padding:6px 16px 0;min-height:6px;color:var(--javi-deep);font-weight:700"></p>
-      ${gh ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0 2px;border-top:1px solid var(--line-soft);margin-top:8px">
-        <span style="font-size:13px;font-weight:700;color:${gh.enc?'var(--javi-deep)':'var(--andrea-deep)'}">${gh.enc?'🔒 Token cifrado (pide contraseña)':'🔓 Token sin cifrar (directo)'}</span>
-        <button id="gh-toggle-enc" style="padding:8px 13px;border-radius:11px;background:var(--bg);border:1px solid var(--line);font-weight:700;font-size:12.5px;color:var(--ink)">${gh.enc?'Quitar cifrado':'Cifrar con contraseña'}</button>
-      </div>` : ''}
-      <p class="set-note">El <b>dueño</b> y el <b>repositorio</b> son los del propietario de los datos (los mismos en ambos móviles). Lo que os identifica es vuestro <b>token</b>. <b>Sin cifrar</b>: sincroniza solo, sin pediros nada. <b>Cifrado</b>: más seguro, pero pide la contraseña al sincronizar.</p>
+    <div class="sec-title serif">Cuenta y sincronización</div>
+    <div class="set-card set-pad">
+      <div class="acct-row"><i class="ph ph-user-circle"></i><span id="acct-email">${account||'—'}</span></div>
+      <p id="sync-msg" class="sync-msg">${syncStatus||''}</p>
+      <button class="btn-primary ghost" id="logout-btn" style="margin-top:10px;height:46px"><i class="ph ph-sign-out"></i> Cerrar sesión</button>
+      <p class="set-note">Los cambios se guardan solos y aparecen al momento en el otro móvil. Sin conexión también funciona: se sube al volver la cobertura.</p>
     </div>
 
     <div class="sec-title serif">Copia de seguridad</div>
@@ -827,9 +820,8 @@ function renderAjustes(){
     priceHistory.sort((x,y)=> x.date<y.date?-1:x.date>y.date?1:0);
     save(); renderAjustes(); renderResumen(); toast(d?'Revisión guardada':'Precio actualizado'); };
   { const cb=$('#pr-cancel-btn'); if(cb) cb.onclick=()=>{ priceEditIdx=null; renderAjustes(); }; }
-  $('#gh-save').onclick=guardarGitHub;
-  $('#gh-sync').onclick=()=>syncFull(true);
-  { const tg=$('#gh-toggle-enc'); if(tg) tg.onclick=toggleCifrado; }
+  $('#logout-btn').onclick=async()=>{ if(!confirm('¿Cerrar sesión en este móvil?')) return;
+    if(window.HomeCloud) await window.HomeCloud.logout(); };
   $('#exp-btn').onclick=exportBackup;
   $('#imp-btn').onclick=()=>$('#imp-file').click();
   $('#imp-file').onchange=importBackup;
@@ -931,12 +923,9 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
 $('#sheet-back').onclick=(e)=>{ if(e.target===$('#sheet-back')) closeSheet(); };
 
 /* ============================================================
-   PERSISTENCIA (localStorage) + SINCRONIZACIÓN (GitHub)
-   El token nunca se serializa con los datos: vive aparte y cifrado.
+   PERSISTENCIA (caché local) + SINCRONIZACIÓN (Firebase, ver cloud.js)
    ============================================================ */
-let gh = loadGh();
-let remoteSha = localStorage.getItem(LS_SHA) || null;
-let pushTimer = null;
+let account = null, syncStatus = '';
 
 function buildData(){
   return {
@@ -958,126 +947,79 @@ function applyData(d){
   priceHistory = Array.isArray(d.priceHistory) ? d.priceHistory.slice() : [];
   categories = (Array.isArray(d.categories) && d.categories.length) ? d.categories.slice() : DEFAULT_CATS.slice();
   movements = Array.isArray(d.movements) ? d.movements.slice() : (Array.isArray(d.movimientos) ? d.movimientos.slice() : []);
+  movements.forEach(m=>{ m.id=+m.id; });
   nextId = d.nextId || (movements.length ? Math.max(99, ...movements.map(m=>+m.id||0))+1 : 100);
 }
-function persistLocal(){ localStorage.setItem(LS_DATA, JSON.stringify(buildData())); }
-function load(){ try{ const d=JSON.parse(localStorage.getItem(LS_DATA)||'null'); if(d) applyData(d); }catch(e){} }
-function save(){ persistLocal(); localStorage.setItem(LS_DIRTY,'1'); schedulePush(); }
-function schedulePush(){ if(!gh) return; clearTimeout(pushTimer); pushTimer=setTimeout(doPush, 1200); }
-async function doPush(){
-  if(!gh) return;
-  // Si el token está cifrado y bloqueado, NO abrimos el modal en cada cambio:
-  // dejamos los datos pendientes y avisamos (se suben con "Sincronizar ahora").
-  if(!gh.token){ setSyncStatus('🔒 cambios sin subir — pulsa ⟳ Sincronizar'); return; }
-  try{ await pushRemote(); setSyncStatus('✓ sincronizado'); }
-  catch(e){ setSyncStatus('⚠ sin conexión · se subirá luego'); }
-}
-async function toggleCifrado(){
-  if(!gh) return;
-  if(gh.enc){                                   // quitar cifrado → guardar token en claro
-    if(!gh.token && !(await ensureToken())) return;   // necesita la contraseña una vez
-    localStorage.setItem(LS_GH, JSON.stringify({ owner:gh.owner, repo:gh.repo, token:gh.token }));
-    delete gh.enc; gh.locked=false;
-    renderAjustes(); setSyncStatus('Cifrado quitado — sincroniza solo ✓'); syncFull(false);
-  } else {                                      // cifrar → pedir contraseña nueva
-    if(!gh.token || !window.SecureToken) return;
-    const pass = await SecureToken.askNewPassphrase(); if(!pass) return;
-    const enc = await SecureToken.encrypt(gh.token, pass);
-    localStorage.setItem(LS_GH, JSON.stringify({ owner:gh.owner, repo:gh.repo, enc }));
-    gh.enc = enc;
-    renderAjustes(); setSyncStatus('Token cifrado ✓');
-  }
+// Id único entre móviles (milisegundos + azar): dos altas a la vez nunca chocan.
+function newId(){ return Date.now()*1000 + Math.floor(Math.random()*1000); }
+function persistLocal(){ try{ localStorage.setItem(LS_CACHE, JSON.stringify(buildData())); }catch(e){} }
+function readJSON(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }
+function load(){ const d=readJSON(LS_CACHE)||readJSON(LS_LEGACY); if(d) applyData(d); }
+function save(){ persistLocal(); if(window.HomeCloud) window.HomeCloud.save(buildData()); }
+function setSyncStatus(txt){ syncStatus=txt; const el=$('#sync-msg'); if(el) el.textContent=txt; }
+
+/* ---------------- pantalla de acceso ---------------- */
+function showLogin(on){
+  let el=$('#login');
+  if(!on){ if(el) el.remove(); return; }
+  if(el) return;
+  el=document.createElement('div'); el.id='login'; el.className='login';
+  el.innerHTML=`<div class="login-card">
+    <div class="login-ic"><i class="ph-fill ph-house"></i></div>
+    <h1 class="serif">Home</h1>
+    <p class="login-sub">Entra con tu correo para ver y guardar los datos de la casa.</p>
+    <form id="login-form" autocomplete="on">
+      <input id="lg-email" type="email" placeholder="Correo" autocomplete="username" required>
+      <input id="lg-pass" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+      <button class="btn-primary" type="submit" id="lg-btn"><i class="ph ph-sign-in"></i> Entrar</button>
+    </form>
+    <button class="login-link" id="lg-reset">¿Olvidaste la contraseña?</button>
+    <p class="login-msg" id="lg-msg"></p>
+  </div>`;
+  document.body.appendChild(el);
+  const msg=t=>{ $('#lg-msg').textContent=t; };
+  $('#login-form').onsubmit=async e=>{ e.preventDefault();
+    if(!window.HomeCloud){ msg('Cargando… vuelve a intentarlo.'); return; }
+    $('#lg-btn').disabled=true; msg('Entrando…');
+    try{ await window.HomeCloud.login($('#lg-email').value.trim(), $('#lg-pass').value); }
+    catch(err){ msg(/invalid|wrong|not-found|credential/.test(err.code||'')?'Correo o contraseña incorrectos.':
+      err.code==='auth/network-request-failed'?'Sin conexión. Prueba de nuevo.':'No se pudo entrar ('+(err.code||err.message)+').'); }
+    finally{ const b=$('#lg-btn'); if(b) b.disabled=false; }
+  };
+  $('#lg-reset').onclick=async()=>{ const em=$('#lg-email').value.trim();
+    if(!em){ msg('Escribe tu correo arriba y vuelve a pulsar.'); return; }
+    try{ await window.HomeCloud.reset(em); msg('Te hemos enviado un correo para crear una contraseña nueva (mira también en spam).'); }
+    catch(err){ msg('No se pudo enviar ('+(err.code||err.message)+').'); }
+  };
 }
 
-function loadGh(){
-  try{ const raw=JSON.parse(localStorage.getItem(LS_GH)||'null'); if(!raw) return null;
-    if(raw.enc) return { owner:raw.owner, repo:raw.repo, enc:raw.enc, token:null, locked:true };
-    return raw;
-  }catch(e){ return null; }
-}
-async function ensureToken(){
-  if(!gh) return false;
-  if(gh.token) return true;
-  if(gh.enc && window.SecureToken){
-    const pass=await SecureToken.askPassphrase(); if(pass===null) return false;
-    try{ gh.token=await SecureToken.decrypt(gh.enc,pass); gh.locked=false; return true; }
-    catch(e){ alert('Contraseña incorrecta. Vuelve a intentarlo.'); return false; }
-  }
-  return false;
-}
-function setSyncStatus(txt){ const el=$('#gh-msg'); if(el) el.textContent=txt; }
-function ghHeaders(){ return { Authorization:'Bearer '+gh.token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28' }; }
-function ghUrl(){ return `https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${DATA_PATH}`; }
-function b64encodeUtf8(s){ return btoa(String.fromCharCode(...new TextEncoder().encode(s))); }
-function b64decodeUtf8(b){ return new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\n/g,'')), c=>c.charCodeAt(0))); }
-
-async function pullRemote(){
-  if(!gh) return 'sin-config';
-  const res=await fetch(ghUrl(),{headers:ghHeaders()});
-  if(res.status===404) return 'no-file';
-  if(!res.ok) throw new Error('GitHub '+res.status);
-  const json=await res.json();
-  remoteSha=json.sha; localStorage.setItem(LS_SHA,remoteSha);
-  const remote=JSON.parse(b64decodeUtf8(json.content));
-  let localData=null; try{ localData=JSON.parse(localStorage.getItem(LS_DATA)||'null'); }catch(e){}
-  const localDirty=localStorage.getItem(LS_DIRTY)==='1';
-  const remoteNewer = !localData || !localData.updatedAt || (remote.updatedAt && remote.updatedAt>localData.updatedAt);
-  if(remoteNewer && !localDirty){ applyData(remote); persistLocal(); return 'actualizado'; }
-  if(localDirty) return 'pendiente-push';
-  return 'al-dia';
-}
-async function pushRemote(){
-  if(!gh) return;
-  const body={ message:'home: actualización '+todayISO(), content:b64encodeUtf8(JSON.stringify(buildData(),null,2)) };
-  if(remoteSha) body.sha=remoteSha;
-  let res=await fetch(ghUrl(),{method:'PUT',headers:ghHeaders(),body:JSON.stringify(body)});
-  if(res.status===409||res.status===422){
-    const cur=await fetch(ghUrl(),{headers:ghHeaders()});
-    if(cur.ok){ remoteSha=(await cur.json()).sha; body.sha=remoteSha;
-      const retry=await fetch(ghUrl(),{method:'PUT',headers:ghHeaders(),body:JSON.stringify(body)});
-      if(!retry.ok) throw new Error('GitHub '+retry.status);
-      remoteSha=(await retry.json()).content.sha;
-    } else throw new Error('GitHub '+cur.status);
-  } else if(!res.ok){ throw new Error('GitHub '+res.status); }
-  else { remoteSha=(await res.json()).content.sha; }
-  localStorage.setItem(LS_SHA,remoteSha);
-  localStorage.setItem(LS_DIRTY,'0');
-}
-async function syncFull(interactive){
-  if(!gh) return;
-  if(!gh.token){ if(!interactive || !(await ensureToken())){ setSyncStatus('🔒 bloqueado'); return; } }
-  setSyncStatus('↻ sincronizando…');
-  try{
-    const estado=await pullRemote();
-    if(estado==='pendiente-push'||estado==='no-file') await pushRemote();
-    setSyncStatus('✓ sincronizado');
-    refreshAll(); renderAnadir();
-    if($('#s-ajustes').classList.contains('active')) renderAjustes();
-  }catch(e){
-    setSyncStatus('⚠ sin conexión');
-    if(interactive) alert('No se pudo sincronizar: '+e.message+'\nLos datos quedan guardados en este dispositivo.');
-  }
-}
-async function guardarGitHub(){
-  const owner=$('#gh-owner').value.trim(), repo=$('#gh-repo').value.trim(), token=$('#gh-token').value.trim();
-  if(!owner||!repo||!token){ setSyncStatus('Rellena usuario, repositorio y token.'); return; }
-  gh={owner,repo,token};
-  setSyncStatus('Probando conexión…');
-  try{
-    const res=await fetch(`https://api.github.com/repos/${owner}/${repo}`,{headers:ghHeaders()});
-    if(!res.ok) throw new Error('error '+res.status);
-  }catch(e){ setSyncStatus('No conecta: '+e.message); gh=loadGh(); return; }
-  let cifrado=false;
-  if(window.SecureToken){
-    const pass=await SecureToken.askNewPassphrase();
-    if(pass){ try{ const enc=await SecureToken.encrypt(token,pass);
-      localStorage.setItem(LS_GH,JSON.stringify({owner,repo,enc})); gh.enc=enc; cifrado=true;
-      setSyncStatus('Conectado y token cifrado ✓'); }catch(e){} }
-  }
-  if(!cifrado){ localStorage.setItem(LS_GH,JSON.stringify({owner,repo,token})); setSyncStatus('Conectado ✓ (token sin cifrar)'); }
-  await syncFull(false);
-  renderAjustes();
-}
+/* ---------------- puente con cloud.js ---------------- */
+window.HomeApp = {
+  toast: t=>toast(t),
+  setSyncStatus,
+  showLogin,
+  newId,
+  setAccount(email){ account=email; const el=$('#acct-email'); if(el) el.textContent=email; },
+  legacyData(){ return readJSON(LS_LEGACY); },
+  legacyDone(){ LEGACY_KEYS.forEach(k=>localStorage.removeItem(k)); },
+  applyRemote(d){
+    const sig=()=>{ const b=buildData(); delete b.updatedAt; delete b.nextId; return JSON.stringify(b); };
+    const before=sig(), catsBefore=JSON.stringify(categories);
+    applyData(d);
+    if(sig()===before) return;          // eco de nuestro propio cambio: nada que repintar
+    persistLocal();
+    // No repintar la pantalla donde alguien está escribiendo (perdería el cursor).
+    const ae=document.activeElement, typing=ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName);
+    const busy=id=>typing && $('#'+id).contains(ae);
+    if(!busy('s-resumen')) renderResumen();
+    if(!busy('s-movimientos')) renderMovimientos();
+    if(!busy('s-hipoteca')) renderHipoteca();
+    if(JSON.stringify(categories)!==catsBefore && !busy('s-anadir')) renderAnadir();   // si no, no borramos lo que estés tecleando
+    if(!busy('s-ajustes')) renderAjustes();
+    renderAppbar(document.querySelector('.tab.on').dataset.tab);
+  },
+  cloudReady(){}
+};
 
 /* ---------------- arranque ---------------- */
 load();
@@ -1097,4 +1039,3 @@ if('serviceWorker' in navigator){
   const reg = navigator.serviceWorker.register('./sw.js');
   reg.then(r=>{ if(r){ r.update(); setInterval(()=>r.update(), 60*60*1000); } }).catch(()=>{});
 }
-syncFull(false);

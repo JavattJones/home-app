@@ -356,3 +356,23 @@ nav.tabbar{ padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
 .tab{ padding:4px 4px; min-width:0; }
 .tab span{ white-space:nowrap; font-size:10px; }
 @media (max-width:480px){ .phone{ height:100vh; height:100dvh; } }
+
+/* ---------- Acceso (Firebase) y cuenta ---------- */
+.login{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;
+  padding:calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));}
+.login-card{width:100%;max-width:380px;text-align:center;}
+.login-ic{width:64px;height:64px;margin:0 auto 10px;border-radius:20px;background:var(--javi);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:var(--shadow);}
+.login h1{font-size:42px;color:var(--ink);margin:0;}
+.login-sub{font-size:14px;color:var(--ink2);margin:6px 0 22px;line-height:1.5;}
+.login form{display:flex;flex-direction:column;gap:10px;}
+.login input{height:50px;border-radius:14px;border:1px solid var(--line);background:var(--card);padding:0 16px;
+  font:inherit;font-size:16px;color:var(--ink);}
+.login input:focus{outline:2px solid var(--javi-soft);border-color:var(--javi);}
+.login .btn-primary{margin-top:4px;display:flex;align-items:center;justify-content:center;gap:8px;}
+.login .btn-primary:disabled{opacity:.6;}
+.login-link{margin-top:14px;background:none;border:0;color:var(--javi-deep);font-weight:700;font-size:13.5px;}
+.login-msg{min-height:20px;margin-top:10px;font-size:13px;color:var(--andrea-deep);font-weight:600;line-height:1.5;}
+.acct-row{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--ink);font-size:15px;word-break:break-all;}
+.acct-row i{font-size:24px;color:var(--javi);}
+.sync-msg{margin:8px 0 0;font-size:13px;font-weight:700;color:var(--javi-deep);min-height:18px;}
