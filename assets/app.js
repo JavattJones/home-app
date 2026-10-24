@@ -969,8 +969,8 @@ function showLogin(on){
     <h1 class="serif">Home</h1>
     <p class="login-sub">Entra con tu correo para ver y guardar los datos de la casa.</p>
     <form id="login-form" autocomplete="on">
-      <input id="lg-email" type="email" placeholder="Correo" autocomplete="username" required>
-      <input id="lg-pass" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+      <input id="lg-email" type="email" placeholder="Correo" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      <input id="lg-pass" type="password" placeholder="Contraseña" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" required>
       <button class="btn-primary" type="submit" id="lg-btn"><i class="ph ph-sign-in"></i> Entrar</button>
     </form>
     <button class="login-link" id="lg-reset">¿Olvidaste la contraseña?</button>
@@ -982,7 +982,7 @@ function showLogin(on){
     if(!window.HomeCloud){ msg('Cargando… vuelve a intentarlo.'); return; }
     $('#lg-btn').disabled=true; msg('Entrando…');
     try{ await window.HomeCloud.login($('#lg-email').value.trim(), $('#lg-pass').value); }
-    catch(err){ msg(/invalid|wrong|not-found|credential/.test(err.code||'')?'Correo o contraseña incorrectos.':
+    catch(err){ msg(/invalid|wrong|not-found|credential/.test(err.code||'')?'Correo o contraseña incorrectos. Si no la recuerdas, pulsa «¿Olvidaste la contraseña?».':
       err.code==='auth/network-request-failed'?'Sin conexión. Prueba de nuevo.':'No se pudo entrar ('+(err.code||err.message)+').'); }
     finally{ const b=$('#lg-btn'); if(b) b.disabled=false; }
   };
